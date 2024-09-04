@@ -1,0 +1,37 @@
+{
+  "name": "backend-laser",
+  "version": "1.0.0",
+  "description": "A Node.js back-end for LaserTags",
+  "main": "index.js",
+  "keywords": [
+    "Laser",
+    "Tags"
+  ],
+  "author": "E.R.B.",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/app.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "express-router": "^0.0.1",
+    "log4js": "^6.9.1",
+    "log4js-json-layout": "^2.2.3",
+    "node-postgres": "^0.6.2",
+    "nodemailer": "^6.9.15",
+    "pg": "^8.12.0",
+    "stripe": "^8.144.0",
+    "url": "^0.11.3"
+  },
+  "devDependencies": {
+    "dotencr": "^1.0.3",
+    "dotenv": "^16.4.5",
+    "jest": "^26.6.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  }
+}

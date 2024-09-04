@@ -1,0 +1,13 @@
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
+
+node_modules/
+
+.DS_Store
+.idea  
+
+*.pyc
+ 
