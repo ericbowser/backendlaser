@@ -18,19 +18,27 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
 const swaggerOptions = {
-    swaggerDefinition: {
+    definition: {
+        schemes: ['http'],
+        openapi: "3.0.0",
         info: {
             title: 'LaserTags API',
             version: '0.0.1',
             description: 'API for LaserTags',
         },
+        contact:{
+            name: 'API Support',
+            url: '',
+            email: 'erbows@collar-culture.com'
+        },
         servers: [
             {
                 url: `http://localhost:${httpPort}`,
+                definition: 'Local API'
             }
         ]
     },
-    apis: [server]
+    apis: ['./docs/LaserTagsApi.yaml']
 }
 
 const httpServer = http.createServer(app);

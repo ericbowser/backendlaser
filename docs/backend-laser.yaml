@@ -1,0 +1,31 @@
+﻿openapi: 3.0.0
+servers:
+  - description: Assist General API
+    url: http://localhost:32638
+info:
+  description: Back-end LaserTags API
+  version: 1.0.0
+  license: {name: MIT}
+  title: LaserTg API
+  contact: {name: Eric}
+paths:
+  /login:
+    post:
+      summary: Login LaserTags
+      description: Login
+      parameters:
+        - body: user
+          in: body
+          description: email and password
+          required: true
+          schema:
+            type: object
+      responses:
+        '200':
+          description: Successfully logged in
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: bad request

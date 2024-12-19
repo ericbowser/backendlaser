@@ -17,8 +17,8 @@ async function sendEmailWithAttachment(from, subject, message) {
         text: message,
         html: `<p>${message}</p>`
     });
-    console.log("Message sent: %s", info.messageId);
-    return info.messageId;
+    console.log("Message sent: %s", info?.messageId);
+    return info?.messageId;
 }
 
 module.exports = sendEmailWithAttachment;
