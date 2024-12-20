@@ -40,8 +40,8 @@ router.post("/login", async (req, res) => {
     const sql =
       `INSERT INTO public."user"(username, password)
        VALUES ('${email}', '${password}') RETURNING userid`;
- b gvvvvvvvvvvvg
-    console.log(sql);
+
+    _logger.info
     const loggedIn = await connection.query(sql);
 
     if (loggedIn.rowCount > 0) {
