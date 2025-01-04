@@ -1,16 +1,16 @@
 const log4js = require('log4js');
 const jsonLayout = require('log4js-json-layout').layout;
 
-let _logger = null;
+let _logger = log4js.getLogger();
 
 function initialize() {
     log4js.addLayout('json', jsonLayout);
     log4js.configure({
         appenders: {
-            assist: {
+            backendlaser: {
                 type: "fileSync",
-                filename: "assist.log",
-                maxLogSize: 10458760,
+                filename: "backendlaser.log",
+                maxLogSize: 10458760, //10 MB
                 backups: 3,
                 layout: {
                     type: 'pattern',
@@ -29,7 +29,7 @@ function initialize() {
         },
         categories: {
             default: {
-                appenders: ['assist', 'out'],
+                appenders: ['backendlaser', 'out'],
                 level: 'debug'
             }
         },

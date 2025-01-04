@@ -1,11 +1,6 @@
 ﻿const {Client, Pool} = require('pg');
 const config = require("dotenv").config();
 const path = require('path');
-const getLogger = require("../logs/backendlaser.js");
-let _logger = getLogger();
-_logger.info('Logger Initialized');
-
-
 
 // Change .env based on local dev or prod
 const env = path.resolve(__dirname, '.env');
@@ -21,7 +16,6 @@ const connectionString =
 async function connectLocalPostgres() {
 	try {
 		if (!client) {
-			_logger.info('Connecting to local postgres..');
 			client = new Client({
 				connectionString: connectionString,
 				ssl: false

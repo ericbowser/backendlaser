@@ -2,64 +2,45 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const router = express.Router();
-const getLogger = require('./logs/assistLog');
-const {json} = require("body-parser");
+const logger = require('./logs/backendlaser');
+const {json} = require('body-parser');
 const {connectLocalPostgres, connectLocalDockerPostgres} = require('./documentdb/client');
+const {createSession} = require('./auth/loginAuth');
+const sendEmailWithAttachment = require('./api/gmailSender');
 
-let _logger = getLogger();
-_logger.info("Logger Initialized")
+let _logger = logger();
+_logger.info('Logger Initialized');
 
 router.use(json());
 router.use(cors());
 router.use(express.json());
 router.use(express.urlencoded({extended: true}));
 
-router.post("/login", async (req, res) => {
-  const {email, password} = req.body;
+router.post('/login', async (req, res) => {
+  const {username, password} = req.body;
   _logger.info('request body for laser tags: ', {credentials: req.body});
+
   try {
-    const connection = await connectLocalPostgres();
-    const query =
-      `SELECT *
-       FROM public."user"
-       WHERE username = '${email}'
-         AND password = '${password}'`;
+    const session = {username, password};
+    const response = await createSession(session);
 
-    const user = await connection.query(query);
-    if (user.rowCount > 0) {
-      _logger.info("User found: ", {found: user.rows[0]});
-      const data = {
-        user: {...user.rows[0]},
-        userid: user.rows[0].userid.toString(),
-        exists: true
-      }
+    const data = {
+      error: null,
+      userid: response.userid,
+    };
+    if (!response.error) {
       return res.status(200).send(data).end();
+    } else {
+      return res.status(500).send(response.error).end();
     }
-
-    _logger.info('Saving new login record...');
-    const sql =
-      `INSERT INTO public."user"(username, password)
-       VALUES ('${email}', '${password}') RETURNING userid`;
-
-    _logger.info
-    const loggedIn = await connection.query(sql);
-
-    if (loggedIn.rowCount > 0) {
-      _logger.info('User saved', {loggedIn});
-      const data = {
-        user: {...user.rows[0]},
-        userid: user.rows[0].userid.toString(),
-        exists: true
-      }
-      return res.status(200).send(data).end();
-    }
-  } catch (err) {
+  } catch
+    (err) {
     console.log(err);
     return res.status(500).send(err.message).end();
   }
 });
 
-router.get("/getContact/:userid", async (req, res) => {
+router.get('/getContact/:userid', async (req, res) => {
   const userid = req.params.userid;
   _logger.info('user id param', {userid});
   try {
@@ -79,20 +60,41 @@ router.get("/getContact/:userid", async (req, res) => {
         petname: response.rows[0].petname,
         phone: response.rows[0].phone,
         address: response.rows[0].address,
-      }
+      };
       _logger.info('Contact found: ', {contact});
-      return res.status(200).send({...contact, exists: true}).end();
+      const data = {
+        contact,
+        exists: true,
+        status: 201,
+      };
+      return res.status(201).send(data).end();
     } else {
-      return res.status(200).send({userid: userid, exists: false}).end();
+      const data = {
+        contact: response.rows[0],
+        userid: userId,
+        exists: false,
+        status: 204,
+      };
+      return res.status(204).send({...data}).end();
     }
   } catch (error) {
+    console.log(error);
     _logger.error('Error getting contact: ', {error});
-    return res.status(500).send({error: error}).end();
+    return res.status(500).send(error).end();
   }
 });
 
-router.post("/saveContact", async (req, res) => {
-  const {userid, firstname, lastname, petname, phone, address,} = req.body;
+router.post('/stripePayment', async (req, res) => {
+  try {
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send(err.message).end();
+  }
+});
+
+router.post('/saveContact', async (req, res) => {
+  const {userid, firstname, lastname, petname, phone, address} = req.body;
   _logger.info('request body for save contact: ', {request: req.body});
 
   try {
@@ -108,7 +110,7 @@ router.post("/saveContact", async (req, res) => {
       petname,
       phone,
       address,
-      parseInt(userid)
+      parseInt(userid),
     ];
 
     const response = await connection.query(query, values);
@@ -124,8 +126,8 @@ router.post("/saveContact", async (req, res) => {
   }
 });
 
-router.post("/updateContact", async (req, res) => {
-  const {userid, firstname, lastname, petname, phone, address,} = req.body;
+router.post('/updateContact', async (req, res) => {
+  const {userid, firstname, lastname, petname, phone, address} = req.body;
   _logger.info('request body for update contact: ', {request: req.body});
 
   try {
@@ -144,7 +146,7 @@ router.post("/updateContact", async (req, res) => {
       petname,
       phone,
       address,
-      parseInt(userid)
+      parseInt(userid),
     ];
 
     const response = await connection.query(query, values);
@@ -163,5 +165,22 @@ router.post("/updateContact", async (req, res) => {
   }
 });
 
+router.post('/sendEmail', async (req, res) => {
+  const {from, recipient, subject, message} = req.body;
+
+  try {
+    _logger.info('Sending email: ', {from, recipient, subject, message});
+    const messageId = await sendEmailWithAttachment(from, recipient, subject, message);
+    _logger.info('Email sent with message id: ', {messageId});
+    if (messageId) {
+      res.status(200).send('Email Sent!').end();
+    } else {
+      res.status(500).send('Error').end();
+    }
+  } catch (error) {
+    _logger.error('Error sending email: ', {error});
+    res.status(500).json({message: 'Failed to send email.'});
+  }
+});
 
 module.exports = router;

@@ -1,9 +1,9 @@
 const {Pool} = require("pg");
 const {v4: uuidv4} = require("uuid");
 const {connectLocalPostgres} = require("../documentdb/client");
-const logger = require("../assistLog");
+const logger = require("../logs/backendlaser");
 
-let _logger = logger();
+let  _logger = logger();
 let connection = null;
 
 async function saveSession(userid) {
@@ -13,7 +13,7 @@ async function saveSession(userid) {
   try {
     const sessionSql =
       `INSERT INTO "public".session(sessionid, sessionstart, userid, sessionduration, sessionstate)
-       VALUES ('${uniqueIdentifier}', '${sessionStart}', ${userid}, '${sessionDuration}', 'active') RETURNING *;`;
+       VALUES ('${uniqueIdentifier}', '${sessionStart}', ${userid}, '${sessionDuration}', 'active');`;
     /*
         ON CONFLICT (sessionid)
       DO
@@ -33,12 +33,12 @@ async function saveSession(userid) {
   }
 }
 
-async function queryUser(email, password) {
+async function queryUser(username, password) {
   try {
     const query =
       `SELECT *
        FROM public."user"
-       WHERE email = '${email}'
+       WHERE username = '${username}'
          AND password = '${password}'`;
 
     const user = await connection.query(query);
@@ -49,11 +49,11 @@ async function queryUser(email, password) {
   }
 }
 
-async function insertUser(email, password) {
+async function insertUser(username, password) {
   try {
     const insertUser =
-      `INSERT INTO "public"."user"(email, password, updateondate)
-       VALUES ('${email}', '${password}', NOW()) RETURNING *;`;
+      `INSERT INTO "public"."user"(username, password, updateondate)
+       VALUES ('${username}', '${password}', NOW()) RETURNING *;`;
 
     const newUser = await connection.query(insertUser);
     return newUser;
@@ -66,16 +66,16 @@ async function insertUser(email, password) {
 
 async function createSession(session = -{}) {
   _logger.info('Session:  ', session);
-  const {email, password} = session;
+  const {username, password} = session;
 
   try {
     if (connection === null) {
       connection = await connectLocalPostgres();
     }
 
-    const user = await queryUser(email, password);
+    const user = await queryUser(username, password);
 
-    if (user.rows.length > 0) {
+    if (user && user.rows.length > 0) {
       _logger.info("User found: ", {user});
 
       const userid = user.rows[0].userid;
@@ -95,7 +95,7 @@ async function createSession(session = -{}) {
     } else {
       _logger.info("User not found, inserting new user: ", {user});
 
-      const newUser = await insertUser(email, password);
+      const newUser = await insertUser(username, password);
       const newSession = await saveSession(newUser);
 
       _logger.info('Session saved: ', {session: newSession.rows[0]});

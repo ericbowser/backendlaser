@@ -1,7 +1,7 @@
 ﻿const nodemailer = require('nodemailer');
 const config = require('dotenv').config();
 
-async function sendEmailWithAttachment(from, subject, message) {
+async function sendEmailWithAttachment(from, recipient, subject, message) {
     const transporter = await nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
@@ -12,7 +12,7 @@ async function sendEmailWithAttachment(from, subject, message) {
     });
     const info = await transporter.sendMail({
         from: from,
-        to: 'ericryanbowser@gmail.com',
+        to: recipient,
         subject: subject,
         text: message,
         html: `<p>${message}</p>`
