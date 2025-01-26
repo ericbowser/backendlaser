@@ -32,3 +32,8 @@
 **/dist
 LICENSE
 README.md
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault

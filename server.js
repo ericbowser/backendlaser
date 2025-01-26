@@ -2,9 +2,9 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const router = express.Router();
-const logger = require('./logs/backendlaser');
+const logger = require('./logs/backendLaserLog');
 const {json} = require('body-parser');
-const {connectLocalPostgres, connectLocalDockerPostgres} = require('./documentdb/client');
+const {connectLocalPostgres} = require('./documentdb/client');
 const {createSession} = require('./auth/loginAuth');
 const sendEmailWithAttachment = require('./api/gmailSender');
 
@@ -31,6 +31,7 @@ router.post('/login', async (req, res) => {
     if (!response.error) {
       return res.status(200).send(data).end();
     } else {
+        _logger.error('Error logging in: ', {error: response.error});
       return res.status(500).send(response.error).end();
     }
   } catch

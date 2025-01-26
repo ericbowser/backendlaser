@@ -1,12 +1,12 @@
 const {Pool} = require("pg");
 const {v4: uuidv4} = require("uuid");
 const {connectLocalPostgres} = require("../documentdb/client");
-const logger = require("../logs/backendlaser");
+const logger = require("../logs/backendLaserLog");
 
 let  _logger = logger();
 let connection = null;
 
-async function saveSession(userid) {
+async function saveSession(userid = -1) {
   const sessionStart = new Date().toLocaleString(); // or any specific timestamp
   const sessionDuration = '01:00:00'; // Example duration of 1 hour
   const uniqueIdentifier = uuidv4();
@@ -51,11 +51,11 @@ async function queryUser(username, password) {
 
 async function insertUser(username, password) {
   try {
-    const insertUser =
-      `INSERT INTO "public"."user"(username, password, updateondate)
+    const insertSql =
+      `INSERT INTO public."user"(username, password, updateondate)
        VALUES ('${username}', '${password}', NOW()) RETURNING *;`;
 
-    const newUser = await connection.query(insertUser);
+    const newUser = await connection.query(insertSql);
     return newUser;
 
   } catch (error) {
@@ -64,7 +64,7 @@ async function insertUser(username, password) {
   }
 }
 
-async function createSession(session = -{}) {
+async function createSession(session = {}) {
   _logger.info('Session:  ', session);
   const {username, password} = session;
 
@@ -96,12 +96,19 @@ async function createSession(session = -{}) {
       _logger.info("User not found, inserting new user: ", {user});
 
       const newUser = await insertUser(username, password);
-      const newSession = await saveSession(newUser);
+
+      if (newUser.rows.length === 0) {
+        _logger.error('Error inserting user: ', {user: newUser});
+        return null;
+      }
+
+      const userid = newUser.rows[0].userid;
+      const newSession = await saveSession(userid);
 
       _logger.info('Session saved: ', {session: newSession.rows[0]});
 
       const data = {
-        userid: newUser.userid,
+        userid: newUser.rows[0].userid,
         user: newUser.rows[0],
         exists: false,
         error: null,

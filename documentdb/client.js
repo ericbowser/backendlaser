@@ -1,11 +1,8 @@
 ﻿const {Client, Pool} = require('pg');
 const config = require("dotenv").config();
 const path = require('path');
-const getLogger = require("../logs/backendlaser.js");
+const getLogger = require("../logs/backendLaserLog.js");
 let _logger = getLogger();
-_logger.info('Logger Initialized');
-
-
 
 // Change .env based on local dev or prod
 const env = path.resolve(__dirname, '.env');
@@ -30,8 +27,9 @@ async function connectLocalPostgres() {
 		}
 
 		return client;
-	} catch (e) {
-		console.log(e);
+	} catch (error) {
+		_logger.error('Error connecting to local postgres: ', {error});
+		throw error;
 	}
 
 	return client;
@@ -47,8 +45,8 @@ async function connectLocalDockerPostgres() {
 
 		const pool = new Pool({
 			user: 'postgres',
-			host: '127.0.0.1',
-			password: '1006',
+			host: 'localhost',
+			password: process.env.DB_PASSWORD,
 			database: 'postgres',
 			port: 5432
 		});
@@ -56,8 +54,9 @@ async function connectLocalDockerPostgres() {
 		console.log('pool: ', pool);
 
 		return client;
-	} catch (e) {
-		console.log(e);
+	} catch (error) {
+		_logger.error('Error connecting to local docker postgres: ', {error});
+		throw error;
 	}
 }
 

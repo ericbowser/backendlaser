@@ -4,6 +4,9 @@ const config = dotenv.config({path: Path.resolve(__dirname, '.env')});
 const server = require('./server');
 const http = require("node:http");
 const cors = require('cors');
+const logger = require('./logs/backendLaserLog');
+const _logger = logger();
+_logger.info('Starting LaserTags API');
 
 const swaggerJsdoc = require('swagger-jsdoc');
 const express = require("express");
