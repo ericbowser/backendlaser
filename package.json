@@ -37,10 +37,9 @@
     "stripe": "^8.144.0",
     "url": "^0.11.3",
     "uuid": "^11.0.3",
-    "wss": "^3.3.4"
+    "wss": "^0.0.2"
   },
   "devDependencies": {
-    "dotencr": "^1.0.3",
     "dotenv": "^16.3.1",
     "nodemon": "^3.1.7",
     "swagger-jsdoc": "^6.2.8",

@@ -13,3 +13,9 @@ node_modules/
 
 *.log
  
+.env
+.env.me
+.env.me.bak
+.idea
+
+dotenv-encrypt_log.json
