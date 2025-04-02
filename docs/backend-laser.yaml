@@ -1,25 +1,35 @@
 ﻿openapi: 3.0.0
 servers:
-  - description: Assist General API
+  - description: LaserTags API - Local Development
     url: http://localhost:32638
 info:
   description: Back-end LaserTags API
   version: 1.0.0
-  license: {name: MIT}
+  license:
+    name: MIT
   title: LaserTg API
-  contact: {name: Eric}
+  contact:
+    name: Eric
 paths:
   /login:
     post:
-      summary: Login LaserTags
-      description: Login
-      parameters:
-        - body: user
-          in: body
-          description: email and password
-          required: true
-          schema:
-            type: object
+      summary: Login to LaserTags
+      description: Authenticate a user and return a user ID and token.
+      requestBody:
+        description: User credentials (email and password)
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                password:
+                  type: string
+                  description: User's password
       responses:
         '200':
           description: Successfully logged in
@@ -27,5 +37,190 @@ paths:
             application/json:
               schema:
                 type: object
+                properties:
+                  userId:
+                    type: string
+                    description: The ID of the logged-in user
+                  token:
+                    type: string
+                    description: Authentication token
         '400':
-          description: bad request
+          description: Invalid request body or missing credentials
+        '401':
+          description: Unauthorized - Invalid email or password
+        '500':
+          description: Internal server error
+  /getContact/{userid}:
+    get:
+      summary: Get contact by user ID
+      description: Retrieve a contact by their user ID.
+      parameters:
+        - in: path
+          name: userid
+          schema:
+            type: string
+          required: true
+          description: ID of the user to get the contact for
+      responses:
+        '200':
+          description: Contact found
+          content:
+            application/json:
+              schema:
+                type: object
+        '204':
+          description: Contact not found
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+  /saveContact:
+    post:
+      summary: Save contact
+      description: Save a new contact.
+      requestBody:
+        description: Contact information
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Contact saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+  /updateContact:
+    post:
+      summary: Update contact
+      description: Update an existing contact.
+      requestBody:
+        description: Updated contact information
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Contact updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+  /askClaude:
+    post:
+      summary: Ask Claude
+      description: Send a prompt to the Claude API.
+      requestBody:
+        description: Prompt for Claude
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  role:
+                    type: string
+                    description: The role of the message (user or assistant)
+                  content:
+                    type: string
+                    description: The content of the message
+      responses:
+        '200':
+          description: Successful response from Claude
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+  /askChat:
+    post:
+      summary: Ask Chat
+      description: Send a prompt to the Chat API.
+      requestBody:
+        description: Prompt for Chat
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  role:
+                    type: string
+                    description: The role of the message (user or assistant)
+                  content:
+                    type: string
+                    description: The content of the message
+      responses:
+        '200':
+          description: Successful response from Chat
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+  /postImage:
+    post:
+      summary: Post Image
+      description: Send an image to the API.
+      requestBody:
+        description: Image data
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful response from API
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+  /postUrlData:
+    post:
+      summary: Post URL Data
+      description: Send URL data to the API.
+      requestBody:
+        description: URL data
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful response from API
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
