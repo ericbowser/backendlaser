@@ -11,7 +11,7 @@ const options = {
 let client = null;
 
 const connectionString =
-	`postgres://${config.parsed.DB_USER}:${config.parsed.DB_PASSWORD}@${config.parsed.DB_SERVER}:${config.parsed.DB_PORT}/postgres`;
+	`postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_PASSWORD}@${process.env.DB_SERVER}:${process.env.DB_PORT}/postgres`;
 
 async function connectLocalPostgres() {
 	try {

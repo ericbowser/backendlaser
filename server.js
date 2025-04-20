@@ -47,7 +47,7 @@ router.get('/getContact/:userid', async (req, res) => {
   try {
     const userId = parseInt(userid);
     const sql = `SELECT *
-                 FROM public."contact"
+                 FROM lasertg."contact"
                  WHERE userid = ${userId}`;
     const connection = await connectLocalPostgres();
     const response = await connection.query(sql);
@@ -101,7 +101,7 @@ router.post('/saveContact', async (req, res) => {
   try {
     const connection = await connectLocalPostgres();
     const query = `
-        INSERT INTO public.contact(firstname, lastname, petname, phone, address, userid)
+        INSERT INTO lasertg."contact"(firstname, lastname, petname, phone, address, userid)
         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;
     `;
 

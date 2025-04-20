@@ -12,8 +12,8 @@ async function saveSession(userid = -1) {
   const uniqueIdentifier = uuidv4();
   try {
     const sessionSql =
-      `INSERT INTO "public".session(sessionid, sessionstart, userid, sessionduration, sessionstate)
-       VALUES ('${uniqueIdentifier}', '${sessionStart}', ${userid}, '${sessionDuration}', 'active');`;
+      `INSERT INTO lasertg."session"(sessionid, sessionstart, userid, sessionduration, sessionstate)
+       VALUES ('${uniqueIdentifier}', '${sessionStart}', '${sessionDuration}', 'active', '${sessionend}', '${sessionhash}');`;
     /*
         ON CONFLICT (sessionid)
       DO
@@ -37,7 +37,7 @@ async function queryUser(username, password) {
   try {
     const query =
       `SELECT *
-       FROM public."user"
+       FROM lasertg."user"
        WHERE username = '${username}'
          AND password = '${password}'`;
 
@@ -52,7 +52,7 @@ async function queryUser(username, password) {
 async function insertUser(username, password) {
   try {
     const insertSql =
-      `INSERT INTO public."user"(username, password, updateondate)
+      `INSERT INTO lasertg."user"(username, password, updateondate)
        VALUES ('${username}', '${password}', NOW()) RETURNING *;`;
 
     const newUser = await connection.query(insertSql);
