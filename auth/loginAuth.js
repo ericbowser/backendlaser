@@ -6,15 +6,15 @@ const logger = require("../logs/backendLaserLog");
 let  _logger = logger();
 let connection = null;
 
-async function saveSession(userid = -1) {
+/*async function saveSession(userid = -1) {
   const sessionStart = new Date().toLocaleString(); // or any specific timestamp
   const sessionDuration = '01:00:00'; // Example duration of 1 hour
   const uniqueIdentifier = uuidv4();
   try {
     const sessionSql =
-      `INSERT INTO lasertg."session"(sessionid, sessionstart, userid, sessionduration, sessionstate)
+      `INSERT INTO lasertg."user"()
        VALUES ('${uniqueIdentifier}', '${sessionStart}', '${sessionDuration}', 'active', '${sessionend}', '${sessionhash}');`;
-    /*
+    /!*
         ON CONFLICT (sessionid)
       DO
    UPDATE SET
@@ -22,7 +22,7 @@ async function saveSession(userid = -1) {
        sessionduration = '${sessionDuration}',
        sessionstate = 'active'
        userid = ${userid}
-       RETURNING *;;*/
+       RETURNING *;;*!/
     _logger.info('Session SQL: ', {sql: sessionSql});
 
     const session = await connection.query(sessionSql);
@@ -31,7 +31,7 @@ async function saveSession(userid = -1) {
     _logger.error('Error saving session: ', {error: e});
     return null;
   }
-}
+}*/
 
 async function queryUser(username, password) {
   try {
@@ -49,11 +49,11 @@ async function queryUser(username, password) {
   }
 }
 
-async function insertUser(username, password) {
+async function insertUser(email, userid) {
   try {
     const insertSql =
-      `INSERT INTO lasertg."user"(username, password, updateondate)
-       VALUES ('${username}', '${password}', NOW()) RETURNING *;`;
+      `INSERT INTO lasertg."user"(userid, username, updateon)
+       VALUES ('${userid}', '${email}', CURRENT_TIMESTAMP) RETURNING *;`;
 
     const newUser = await connection.query(insertSql);
     return newUser;
@@ -64,7 +64,7 @@ async function insertUser(username, password) {
   }
 }
 
-async function createSession(session = {}) {
+/*async function createSession(session = {}) {
   _logger.info('Session:  ', session);
   const {username, password} = session;
 
@@ -124,6 +124,6 @@ async function createSession(session = {}) {
     }
     return data;
   }
-}
+}*/
 
-module.exports = {createSession};
+module.exports = {insertUser};

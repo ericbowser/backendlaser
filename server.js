@@ -5,7 +5,7 @@ const router = express.Router();
 const logger = require('./logs/backendLaserLog');
 const {json} = require('body-parser');
 const {connectLocalPostgres} = require('./documentdb/client');
-const {createSession} = require('./auth/loginAuth');
+const {insertUser} = require('./auth/loginAuth');
 const sendEmailWithAttachment = require('./api/gmailSender');
 
 let _logger = logger();
@@ -17,16 +17,16 @@ router.use(express.json());
 router.use(express.urlencoded({extended: true}));
 
 router.post('/login', async (req, res) => {
-  const {username, password} = req.body;
+  const {username, userid} = req.body;
   _logger.info('request body for laser tags: ', {credentials: req.body});
 
   try {
-    const session = {username, password};
-    const response = await createSession(session);
+    const user = {username, userid};
+    const response = await insertUser(user);
 
     const data = {
       error: null,
-      userid: response.userid,
+      userid,
     };
     if (!response.error) {
       return res.status(200).send(data).end();
