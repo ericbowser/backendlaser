@@ -1,6 +1,3 @@
-const Path = require('path');
-const dotenv = require("dotenv");
-const config = dotenv.config({path: Path.resolve(__dirname, '.env')});
 const server = require('./server');
 const http = require("node:http");
 const cors = require('cors');
@@ -17,6 +14,7 @@ console.log('passed port to use for http', httpPort);
 
 const app = express();
 app.use(server);
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 

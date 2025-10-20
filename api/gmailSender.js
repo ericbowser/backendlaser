@@ -1,5 +1,5 @@
 ﻿const nodemailer = require('nodemailer');
-const config = require('dotenv').config();
+const {GMAIL_APP_PASSWORD} = require('../env.json');
 
 async function sendEmailWithAttachment(from, recipient, subject, message) {
     const transporter = await nodemailer.createTransport({
@@ -7,7 +7,7 @@ async function sendEmailWithAttachment(from, recipient, subject, message) {
         port: 587,
         auth: {
             user: 'ericryanbowser@gmail.com',
-            pass: config.parsed.GMAIL_APP_PASSWORD,
+            pass: GMAIL_APP_PASSWORD,
         },
     });
     const info = await transporter.sendMail({

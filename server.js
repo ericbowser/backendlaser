@@ -5,7 +5,7 @@ const router = express.Router();
 const logger = require('./logs/backendLaserLog');
 const {json} = require('body-parser');
 const {connectLocalPostgres} = require('./documentdb/client');
-const {insertUser} = require('./auth/loginAuth');
+const {insertUser, queryUser} = require('./auth/loginAuth');
 const sendEmailWithAttachment = require('./api/gmailSender');
 
 let _logger = logger();
@@ -17,21 +17,34 @@ router.use(express.json());
 router.use(express.urlencoded({extended: true}));
 
 router.post('/login', async (req, res) => {
-  const {username, userid} = req.body;
+  const {username, userid, pictureurl} = req.body;
   _logger.info('request body for laser tags: ', {credentials: req.body});
 
   try {
-    const user = {username, userid};
-    const response = await insertUser(user);
+    const query = await queryUser();
+    _logger.info('Exists: ', query);
+    if(query) {
+      _logger.info('User already exists');
+      const data = {
+        userid: auth0id,
+        username,
+        pictureurl,
+        exists: true
+      }
+      return res.status(200).send({...data}).end();
+    }
+    const response = await insertUser(auth0id, username, pictureurl);
 
-    const data = {
-      error: null,
-      userid,
-    };
-    if (!response.error) {
-      return res.status(200).send(data).end();
+    if (response !== null) {
+      const data = {
+        'ok': true,
+        userid: auth0id,
+        username,
+        pictureurl
+      };
+      return res.status(200).send({...data}).end();
     } else {
-        _logger.error('Error logging in: ', {error: response.error});
+       _logger.error('Error logging in: ', {error: response.error});
       return res.status(500).send(response.error).end();
     }
   } catch
@@ -167,11 +180,11 @@ router.post('/updateContact', async (req, res) => {
 });
 
 router.post('/sendEmail', async (req, res) => {
-  const {from, recipient, subject, message} = req.body;
+  const {from, to, subject, message} = req.body;
 
   try {
-    _logger.info('Sending email: ', {from, recipient, subject, message});
-    const messageId = await sendEmailWithAttachment(from, recipient, subject, message);
+    _logger.info('Sending email: ', {from, to, subject, message});
+    const messageId = await sendEmailWithAttachment(from, to, subject, message);
     _logger.info('Email sent with message id: ', {messageId});
     if (messageId) {
       res.status(200).send('Email Sent!').end();
