@@ -20,3 +20,4 @@ node_modules/
 
 dotenv-encrypt_log.json
 env.json
+sendgrid.env
