@@ -8,8 +8,9 @@ _logger.info('Starting LaserTags API');
 const swaggerJsdoc = require('swagger-jsdoc');
 const express = require("express");
 const {serve, setup} = require("swagger-ui-express");
+const {PORT, HOST} = require('./env.json');
 
-const httpPort = process.env.PORT || 3003;
+const httpPort = PORT || 3003;
 console.log('passed port to use for http', httpPort);
 
 const app = express();
@@ -34,7 +35,7 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: `http://localhost:${httpPort}`,
+                url: `http://localhost:${PORT}`,
                 definition: 'Local API'
             }
         ]
@@ -47,6 +48,6 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', serve, setup(swaggerDocs))
 
 httpServer.listen(httpPort, () => {
-    console.log(`Server listening on http://localhost:${httpPort}`);
+    console.log(`Server listening on http://localhost:${PORT}`);
 });
 

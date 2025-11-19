@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A Node.js back-end for LaserTags",
   "main": "index.js",
+  "type": "commonjs",
   "keywords": [
     "Laser",
     "Tags"

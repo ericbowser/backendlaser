@@ -24,19 +24,17 @@ function initialize() {
           pattern: '%d{yyyy-MM-dd hh:mm:ss} [%p] %c - (%f{2}:%l) %m %n',
         }
       },
-      out: {
-        type: "stdout"
+      console: {
+        type: "console",
+        layout: {
+          type: 'pattern',
+          pattern: '%d{yyyy-MM-dd hh:mm:ss} [%p] %c - %m %n',
+        }
       },
-      layout: {
-        type: 'json'
-      }
-    },
-    assist_console: {
-      type: "out"
     },
     categories: {
       default: {
-        appenders: ['backendLaser', 'out'],
+        appenders: ['backendLaser', 'console'],
         level: 'debug'
       }
     },

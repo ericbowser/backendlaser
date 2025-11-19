@@ -12,7 +12,7 @@ async function sendEmailWithAttachment(from, recipient, subject, message) {
     });
     const info = await transporter.sendMail({
         from: from,
-        to: recipient,
+        to: recipient || 'laser@new-collar.space',
         subject: subject,
         text: message,
         html: `<p>${message}</p>`
