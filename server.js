@@ -74,7 +74,7 @@ router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (re
                                  SET stripe_payment_intent_id = $1,
                                      status = 'paid',
                                      updated_at = CURRENT_TIMESTAMP
-                                 WHERE orderid = $2
+                                 WHERE id = $2
                                  RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
@@ -92,7 +92,7 @@ router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (re
                 // Send email notification for new order
                 try {
                   // Get contact details for the email
-                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE contactid = $1`;
+                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE id = $1`;
                   const contactResult = await connection.query(contactQuery, [updatedOrder.contactid]);
                   
                   if (contactResult.rowCount > 0) {
@@ -188,7 +188,7 @@ Please process this order and begin crafting the laser tag.`;
                                  SET stripe_payment_intent_id = $1,
                                      status = 'failed',
                                      updated_at = CURRENT_TIMESTAMP
-                                 WHERE orderid = $2
+                                 WHERE id = $2
                                  RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
@@ -242,7 +242,7 @@ Please process this order and begin crafting the laser tag.`;
               const updateQuery = `UPDATE lasertg.orders
                                  SET stripe_payment_intent_id = $1,
                                      updated_at = CURRENT_TIMESTAMP
-                                 WHERE orderid = $2
+                                 WHERE id = $2 AND stripe_payment_intent_id IS NULL
                                  RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
@@ -307,7 +307,7 @@ Please process this order and begin crafting the laser tag.`;
                                  SET stripe_payment_intent_id = $1,
                                      status = 'processing',
                                      updated_at = CURRENT_TIMESTAMP
-                                 WHERE orderid = $2
+                                 WHERE id = $2
                                  RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
@@ -360,7 +360,7 @@ Please process this order and begin crafting the laser tag.`;
                                  SET stripe_payment_intent_id = $1,
                                      status = 'processing',
                                      updated_at = CURRENT_TIMESTAMP
-                                 WHERE orderid = $2
+                                 WHERE id = $2
                                  RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
@@ -414,7 +414,7 @@ Please process this order and begin crafting the laser tag.`;
                                  SET stripe_payment_intent_id = $1,
                                      status = $2,
                                      updated_at = CURRENT_TIMESTAMP
-                                 WHERE orderid = $3
+                                 WHERE id = $3
                                  RETURNING *;`;
               const paymentStatus = event.data.object.payment_status === 'paid' ? 'paid' : 'processing';
               const updateResult = await connection.query(updateQuery, [
@@ -435,7 +435,7 @@ Please process this order and begin crafting the laser tag.`;
                 // Send email notification for new order
                 try {
                   // Get contact details for the email
-                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE contactid = $1`;
+                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE id = $1`;
                   const contactResult = await connection.query(contactQuery, [updatedOrder.contactid]);
                   
                   if (contactResult.rowCount > 0) {
@@ -576,20 +576,19 @@ router.get('/getContact/:contactid', async (req, res) => {
   try {
     const sql = `SELECT *
                  FROM lasertg."contact"
-                 WHERE contactid = $1`;
+                 WHERE id = $1`;
     const connection = await connectLocalPostgres();
     const response = await connection.query(sql, [contactid]);
     _logger.info('response', {response});
     let contact = null;
     if (response.rowCount > 0) {
       contact = {
-        contactid: response.rows[0].contactid.toString(),
+        contactid: response.rows[0].id.toString(),
         firstname: response.rows[0].firstname,
         lastname: response.rows[0].lastname,
         petname: response.rows[0].petname,
         phone: response.rows[0].phone,
         address: response.rows[0].address,
-        orderid: response.rows[0].orderid,
       };
       _logger.info('Contact found: ', {contact});
       const data = {
@@ -1034,7 +1033,7 @@ router.post('/updateOrderPayment', async (req, res) => {
                    SET stripe_payment_intent_id = $1,
                        status = $2,
                        updated_at = CURRENT_TIMESTAMP
-                   WHERE orderid = $3
+                   WHERE id = $3
                    RETURNING *;`;
 
     const values = [
@@ -1105,7 +1104,7 @@ router.post('/updateContact', async (req, res) => {
                        petname   = $3,
                        phone     = $4,
                        address   = $5
-                   WHERE contactid = $6;`;
+                   WHERE id = $6;`;
 
     const values = [
       firstname || null,
