@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const router = express.Router();
+const RateLimit = require('express-rate-limit');
 const logger = require('./logs/backendLaserLog');
 const {json} = require('body-parser');
 const {connectLocalPostgres} = require('./documentdb/client');
@@ -12,6 +13,13 @@ const {STRIPE_WEBHOOK_SECRET, STRIPE_TEST_PUBLISHABLE_API_KEY} = require('./env.
 
 let _logger = logger();
 _logger.info('Logger Initialized');
+
+// Apply rate limiting: max 10 requests per minute for updateContact
+const updateContactLimiter = RateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: 'Too many update contact requests from this IP, please try again later.'
+});
 
 // Stripe webhook endpoint - must be defined BEFORE body parsers to get raw body
 router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (req, res) => {
@@ -1092,7 +1100,7 @@ router.post('/saveContact', async (req, res) => {
   }
 });
 
-router.post('/updateContact', async (req, res) => {
+router.post('/updateContact', updateContactLimiter, async (req, res) => {
   const {contactid, firstname, lastname, petname, phone, address} = req.body;
   _logger.info('request body for update contact: ', {request: req.body});
 
