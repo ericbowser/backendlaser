@@ -16,7 +16,6 @@ if (!STRIPE_TEST_SECRET_API_KEY.startsWith('sk_test_') && !STRIPE_TEST_SECRET_AP
 const stripe = require('stripe')(STRIPE_TEST_SECRET_API_KEY);
 
 _logger.info('Stripe initialized', {
-  keyPrefix: STRIPE_TEST_SECRET_API_KEY.substring(0, 8) + '...',
   keyType: STRIPE_TEST_SECRET_API_KEY.startsWith('sk_test_') ? 'test' : 'live'
 });
 
