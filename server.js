@@ -1063,13 +1063,8 @@ router.post('/saveContact', async (req, res) => {
   }
 });
 
-<<<<<<< Updated upstream
 router.post('/updateContact', updateContactLimiter, async (req, res) => {
   const {contactid, firstname, lastname, petname, phone, address} = req.body;
-=======
-router.post('/updateContact', async (req, res) => {
-  const {firstname, lastname, petname, phone, fullname} = req.body;
->>>>>>> Stashed changes
   _logger.info('request body for update contact: ', {request: req.body});
 
   try {
