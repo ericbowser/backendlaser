@@ -20,4 +20,7 @@ node_modules/
 
 dotenv-encrypt_log.json
 env.json
-sendgrid.env
+stripe-listen.sh
+integration-guide.js
+test-webhook-system.js
+docs/

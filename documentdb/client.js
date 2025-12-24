@@ -1,5 +1,5 @@
 ﻿const {Client, Pool} = require('pg');
-const {DB_PORT, DB_SERVER} = require("../env.json");
+const {DB_PORT, DB_SERVER, DB_USER, DB_PASSWORD} = require("../env.json");
 const getLogger = require("../logs/backendLaserLog.js");
 let _logger = getLogger();
 
@@ -8,15 +8,20 @@ let client = null;
 async function connectLocalPostgres() {
 	try {
 		if (!client) {
-			_logger.info('Connecting to local postgres..');
+			_logger.info('Connecting to local postgres..', {
+				host: DB_SERVER,
+				port: DB_PORT,
+				user: DB_USER
+			});
 			client = new Client({
-				user: process.env.DB_USER || 'ericbo',
-				password: process.env.DB_PASSWORD,
-				port: process.env.PORT || 5433,
+				user: DB_USER,
+				password: DB_PASSWORD,
+				port: parseInt(DB_PORT),
 				host: DB_SERVER,
 				ssl: false
 			});
 			await client.connect();
+			_logger.info('Successfully connected to local postgres');
 		}
 
 		return client;
@@ -32,17 +37,17 @@ async function connectLocalDockerPostgres() {
 			const pool = new Pool({
 				user: DB_USER,
 				host: DB_SERVER,
-				password: process.env.DB_PASSWORD,
+				password: DB_PASSWORD,
 				database: 'postgres',
-				port: DB_PORT
+				port: parseInt(DB_PORT)
 			});
 
 			client = new Client({
 				user: DB_USER,
 				host: DB_SERVER,
-				password: process.env.DB_PASSWORD,
+				password: DB_PASSWORD,
 				database: 'postgres',
-				port: DB_PORT,
+				port: parseInt(DB_PORT),
 				ssl: false
 			});
 

@@ -22,9 +22,10 @@ const updateContactLimiter = RateLimit({
 });
 
 // Stripe webhook endpoint - must be defined BEFORE body parsers to get raw body
+// Stripe webhook endpoint - must be defined BEFORE body parsers to get raw body
 router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (req, res) => {
   const signature = req.headers['stripe-signature'];
-  
+
   _logger.info('POST /stripeWebhook - Webhook received', {
     signature: signature ? 'present' : 'missing',
     contentType: req.headers['content-type'],
@@ -49,7 +50,7 @@ router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (re
 
     // Verify webhook signature - req.body should be a Buffer
     const event = verifyWebhookSignature(req.body, signature, STRIPE_WEBHOOK_SECRET);
-    
+
     _logger.info('Stripe webhook event received', {
       eventType: event.type,
       eventId: event.id,
@@ -66,7 +67,7 @@ router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (re
           currency: event.data.object.currency,
           metadata: event.data.object.metadata
         });
-        
+
         // Update order status if orderid is in metadata
         if (event.data.object.metadata?.orderid) {
           try {
@@ -78,17 +79,18 @@ router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (re
               });
             } else {
               const connection = await connectLocalPostgres();
+              // FIXED: Using orderid column name (not id)
               const updateQuery = `UPDATE lasertg.orders
-                                 SET stripe_payment_intent_id = $1,
-                                     status = 'paid',
-                                     updated_at = CURRENT_TIMESTAMP
-                                 WHERE id = $2
-                                 RETURNING *;`;
+                                   SET stripe_payment_intent_id = $1,
+                                       status = 'paid',
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE orderid = $2
+                                       RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
                 orderid
               ]);
-              
+
               if (updateResult.rowCount > 0) {
                 const updatedOrder = updateResult.rows[0];
                 _logger.info('Order updated after payment success', {
@@ -96,17 +98,17 @@ router.post('/stripeWebhook', express.raw({type: 'application/json'}), async (re
                   paymentIntentId: event.data.object.id,
                   updatedOrder: updatedOrder
                 });
-                
+
                 // Send email notification for new order
                 try {
-                  // Get contact details for the email
-                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE id = $1`;
+                  // FIXED: Using contactid column name (not id)
+                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE contactid = $1`;
                   const contactResult = await connection.query(contactQuery, [updatedOrder.contactid]);
-                  
+
                   if (contactResult.rowCount > 0) {
                     const contact = contactResult.rows[0];
                     const orderAmount = (updatedOrder.amount / 100).toFixed(2);
-                    
+
                     const emailSubject = 'New order received';
                     const emailBody = `New Order #${updatedOrder.orderid}
 
@@ -123,20 +125,21 @@ Tag Information:
 - Has QR Code: ${updatedOrder.has_qr_code ? 'Yes' : 'No'}
 
 Customer Information:
-- Name: ${contact.fullname || contact.firstname || ''} ${contact.lastname || ''}
+- Name: ${contact.firstname || ''} ${contact.lastname || ''}
 - Pet Name: ${contact.petname || 'N/A'}
 - Phone: ${contact.phone || 'N/A'}
-- Address: ${contact.address || 'N/A'}
+- Address Line 1: ${contact.address_line_1 || 'N/A'}
+- Address Line 2: ${contact.address_line_2 || 'N/A'}
 
 Please process this order and begin crafting the laser tag.`;
 
                     await sendEmailWithAttachment(
                       'ericryanbowser@gmail.com',
-                      null, // Uses default recipient from gmailSender
+                      null,
                       emailSubject,
                       emailBody
                     );
-                    
+
                     _logger.info('Order notification email sent', {
                       orderid: orderid,
                       emailSent: true
@@ -148,7 +151,6 @@ Please process this order and begin crafting the laser tag.`;
                     orderid: orderid,
                     stack: emailError.stack
                   });
-                  // Don't fail the webhook if email fails
                 }
               } else {
                 _logger.warn('Order not found for payment success', {
@@ -180,39 +182,29 @@ Please process this order and begin crafting the laser tag.`;
           error: event.data.object.last_payment_error,
           metadata: event.data.object.metadata
         });
-        
-        // Update order status if orderid is in metadata
+
         if (event.data.object.metadata?.orderid) {
           try {
             const orderid = parseInt(event.data.object.metadata.orderid);
-            if (isNaN(orderid)) {
-              _logger.warn('Invalid orderid in metadata', {
-                orderid: event.data.object.metadata.orderid,
-                paymentIntentId: event.data.object.id
-              });
-            } else {
+            if (!isNaN(orderid)) {
               const connection = await connectLocalPostgres();
+              // FIXED: Using orderid column name
               const updateQuery = `UPDATE lasertg.orders
-                                 SET stripe_payment_intent_id = $1,
-                                     status = 'failed',
-                                     updated_at = CURRENT_TIMESTAMP
-                                 WHERE id = $2
-                                 RETURNING *;`;
+                                   SET stripe_payment_intent_id = $1,
+                                       status = 'failed',
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE orderid = $2
+                                       RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
                 orderid
               ]);
-              
+
               if (updateResult.rowCount > 0) {
                 _logger.info('Order updated after payment failure', {
                   orderid: orderid,
                   paymentIntentId: event.data.object.id,
                   updatedOrder: updateResult.rows[0]
-                });
-              } else {
-                _logger.warn('Order not found for payment failure', {
-                  orderid: orderid,
-                  paymentIntentId: event.data.object.id
                 });
               }
             }
@@ -235,28 +227,23 @@ Please process this order and begin crafting the laser tag.`;
           status: event.data.object.status,
           metadata: event.data.object.metadata
         });
-        
-        // Optionally update order with payment intent ID if orderid is in metadata
+
         if (event.data.object.metadata?.orderid) {
           try {
             const orderid = parseInt(event.data.object.metadata.orderid);
-            if (isNaN(orderid)) {
-              _logger.warn('Invalid orderid in metadata', {
-                orderid: event.data.object.metadata.orderid,
-                paymentIntentId: event.data.object.id
-              });
-            } else {
+            if (!isNaN(orderid)) {
               const connection = await connectLocalPostgres();
+              // FIXED: Using orderid column name
               const updateQuery = `UPDATE lasertg.orders
-                                 SET stripe_payment_intent_id = $1,
-                                     updated_at = CURRENT_TIMESTAMP
-                                 WHERE id = $2 AND stripe_payment_intent_id IS NULL
-                                 RETURNING *;`;
+                                   SET stripe_payment_intent_id = $1,
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE orderid = $2 AND stripe_payment_intent_id IS NULL
+                                       RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
                 orderid
               ]);
-              
+
               if (updateResult.rowCount > 0) {
                 _logger.info('Order updated with payment intent ID', {
                   orderid: orderid,
@@ -278,10 +265,6 @@ Please process this order and begin crafting the laser tag.`;
               paymentIntentId: event.data.object.id
             });
           }
-        } else {
-          _logger.debug('No orderid in payment intent metadata (this is OK if order created after payment intent)', {
-            paymentIntentId: event.data.object.id
-          });
         }
         break;
 
@@ -299,48 +282,36 @@ Please process this order and begin crafting the laser tag.`;
           nextAction: event.data.object.next_action,
           metadata: event.data.object.metadata
         });
-        
-        // Update order with payment intent ID and status if orderid is in metadata
+
         if (event.data.object.metadata?.orderid) {
           try {
             const orderid = parseInt(event.data.object.metadata.orderid);
-            if (isNaN(orderid)) {
-              _logger.warn('Invalid orderid in metadata', {
-                orderid: event.data.object.metadata.orderid,
-                paymentIntentId: event.data.object.id
-              });
-            } else {
+            if (!isNaN(orderid)) {
               const connection = await connectLocalPostgres();
+              // FIXED: Using orderid column name
               const updateQuery = `UPDATE lasertg.orders
-                                 SET stripe_payment_intent_id = $1,
-                                     status = 'processing',
-                                     updated_at = CURRENT_TIMESTAMP
-                                 WHERE id = $2
-                                 RETURNING *;`;
+                                   SET stripe_payment_intent_id = $1,
+                                       status = 'processing',
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE orderid = $2
+                                       RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
                 orderid
               ]);
-              
+
               if (updateResult.rowCount > 0) {
                 _logger.info('Order updated with payment intent requires_action', {
                   orderid: orderid,
                   paymentIntentId: event.data.object.id,
                   updatedOrder: updateResult.rows[0]
                 });
-              } else {
-                _logger.warn('Order not found for payment intent requires_action', {
-                  orderid: orderid,
-                  paymentIntentId: event.data.object.id
-                });
               }
             }
           } catch (dbError) {
             _logger.error('Error updating order for payment intent requires_action', {
               error: dbError.message,
-              stack: dbError.stack,
-              orderid: event.data.object.metadata.orderid,
-              paymentIntentId: event.data.object.id
+              stack: dbError.stack
             });
           }
         }
@@ -352,37 +323,26 @@ Please process this order and begin crafting the laser tag.`;
           status: event.data.object.status,
           metadata: event.data.object.metadata
         });
-        
-        // Update order with payment intent ID and status if orderid is in metadata
+
         if (event.data.object.metadata?.orderid) {
           try {
             const orderid = parseInt(event.data.object.metadata.orderid);
-            if (isNaN(orderid)) {
-              _logger.warn('Invalid orderid in metadata', {
-                orderid: event.data.object.metadata.orderid,
-                paymentIntentId: event.data.object.id
-              });
-            } else {
+            if (!isNaN(orderid)) {
               const connection = await connectLocalPostgres();
+              // FIXED: Using orderid column name
               const updateQuery = `UPDATE lasertg.orders
-                                 SET stripe_payment_intent_id = $1,
-                                     status = 'processing',
-                                     updated_at = CURRENT_TIMESTAMP
-                                 WHERE id = $2
-                                 RETURNING *;`;
+                                   SET stripe_payment_intent_id = $1,
+                                       status = 'processing',
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE orderid = $2
+                                       RETURNING *;`;
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.id,
                 orderid
               ]);
-              
+
               if (updateResult.rowCount > 0) {
                 _logger.info('Order updated with payment intent processing', {
-                  orderid: orderid,
-                  paymentIntentId: event.data.object.id,
-                  updatedOrder: updateResult.rows[0]
-                });
-              } else {
-                _logger.warn('Order not found for payment intent processing', {
                   orderid: orderid,
                   paymentIntentId: event.data.object.id
                 });
@@ -391,9 +351,7 @@ Please process this order and begin crafting the laser tag.`;
           } catch (dbError) {
             _logger.error('Error updating order for payment intent processing', {
               error: dbError.message,
-              stack: dbError.stack,
-              orderid: event.data.object.metadata.orderid,
-              paymentIntentId: event.data.object.id
+              stack: dbError.stack
             });
           }
         }
@@ -406,50 +364,44 @@ Please process this order and begin crafting the laser tag.`;
           paymentIntentId: event.data.object.payment_intent,
           metadata: event.data.object.metadata
         });
-        
-        // Update order status if orderid is in metadata
+
         if (event.data.object.metadata?.orderid && event.data.object.payment_intent) {
           try {
             const orderid = parseInt(event.data.object.metadata.orderid);
-            if (isNaN(orderid)) {
-              _logger.warn('Invalid orderid in checkout session metadata', {
-                orderid: event.data.object.metadata.orderid,
-                sessionId: event.data.object.id
-              });
-            } else {
+            if (!isNaN(orderid)) {
               const connection = await connectLocalPostgres();
+              // FIXED: Using orderid column name
               const updateQuery = `UPDATE lasertg.orders
-                                 SET stripe_payment_intent_id = $1,
-                                     status = $2,
-                                     updated_at = CURRENT_TIMESTAMP
-                                 WHERE id = $3
-                                 RETURNING *;`;
+                                   SET stripe_payment_intent_id = $1,
+                                       status = $2,
+                                       updated_at = CURRENT_TIMESTAMP
+                                   WHERE orderid = $3
+                                       RETURNING *;`;
               const paymentStatus = event.data.object.payment_status === 'paid' ? 'paid' : 'processing';
               const updateResult = await connection.query(updateQuery, [
                 event.data.object.payment_intent,
                 paymentStatus,
                 orderid
               ]);
-              
+
               if (updateResult.rowCount > 0) {
                 const updatedOrder = updateResult.rows[0];
                 _logger.info('Order updated after checkout session completion', {
                   orderid: orderid,
                   paymentIntentId: event.data.object.payment_intent,
-                  paymentStatus: event.data.object.payment_status,
-                  updatedOrder: updatedOrder
+                  paymentStatus: event.data.object.payment_status
                 });
-                
-                // Send email notification for new order
+
+                // Send email notification
                 try {
-                  // Get contact details for the email
-                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE id = $1`;
+                  // FIXED: Using contactid column name
+                  const contactQuery = `SELECT * FROM lasertg."contact" WHERE contactid = $1`;
                   const contactResult = await connection.query(contactQuery, [updatedOrder.contactid]);
-                  
+
                   if (contactResult.rowCount > 0) {
                     const contact = contactResult.rows[0];
                     const orderAmount = (updatedOrder.amount / 100).toFixed(2);
-                    
+
                     const emailSubject = 'New order received';
                     const emailBody = `New Order #${updatedOrder.orderid}
 
@@ -466,20 +418,21 @@ Tag Information:
 - Has QR Code: ${updatedOrder.has_qr_code ? 'Yes' : 'No'}
 
 Customer Information:
-- Name: ${contact.fullname || contact.firstname || ''} ${contact.lastname || ''}
+- Name: ${contact.firstname || ''} ${contact.lastname || ''}
 - Pet Name: ${contact.petname || 'N/A'}
 - Phone: ${contact.phone || 'N/A'}
-- Address: ${contact.address || 'N/A'}
+- Address Line 1: ${contact.address_line_1 || 'N/A'}
+- Address Line 2: ${contact.address_line_2 || 'N/A'}
 
 Please process this order and begin crafting the laser tag.`;
 
                     await sendEmailWithAttachment(
                       'ericryanbowser@gmail.com',
-                      null, // Uses default recipient from gmailSender
+                      null,
                       emailSubject,
                       emailBody
                     );
-                    
+
                     _logger.info('Order notification email sent', {
                       orderid: orderid,
                       emailSent: true
@@ -491,21 +444,13 @@ Please process this order and begin crafting the laser tag.`;
                     orderid: orderid,
                     stack: emailError.stack
                   });
-                  // Don't fail the webhook if email fails
                 }
-              } else {
-                _logger.warn('Order not found for checkout session completion', {
-                  orderid: orderid,
-                  paymentIntentId: event.data.object.payment_intent
-                });
               }
             }
           } catch (dbError) {
             _logger.error('Error updating order after checkout session completion', {
               error: dbError.message,
-              stack: dbError.stack,
-              orderid: event.data.object.metadata.orderid,
-              sessionId: event.data.object.id
+              stack: dbError.stack
             });
           }
         }
@@ -518,7 +463,6 @@ Please process this order and begin crafting the laser tag.`;
         });
     }
 
-    // Acknowledge receipt of the webhook
     return res.status(200).send({received: true}).end();
   } catch (error) {
     _logger.error('Error processing Stripe webhook', {
@@ -535,10 +479,26 @@ Please process this order and begin crafting the laser tag.`;
   }
 });
 
-router.use(json());
+// Apply body parsers conditionally - skip /stripeWebhook (needs raw body)
+router.use((req, res, next) => {
+  if (req.path === '/stripeWebhook' || req.originalUrl === '/stripeWebhook' || req.originalUrl.includes('/stripeWebhook')) {
+    return next();
+  }
+  json()(req, res, next);
+});
 router.use(cors());
-router.use(express.json());
-router.use(express.urlencoded({extended: true}));
+router.use((req, res, next) => {
+  if (req.path === '/stripeWebhook' || req.originalUrl === '/stripeWebhook' || req.originalUrl.includes('/stripeWebhook')) {
+    return next();
+  }
+  express.json()(req, res, next);
+});
+router.use((req, res, next) => {
+  if (req.path === '/stripeWebhook' || req.originalUrl === '/stripeWebhook' || req.originalUrl.includes('/stripeWebhook')) {
+    return next();
+  }
+  express.urlencoded({extended: true})(req, res, next);
+});
 
 // TODO: Implement login functionality when authentication is added
 // router.post('/login', async (req, res) => {
@@ -594,9 +554,12 @@ router.get('/getContact/:contactid', async (req, res) => {
         contactid: response.rows[0].id.toString(),
         firstname: response.rows[0].firstname,
         lastname: response.rows[0].lastname,
+        fullname: response.rows[0].fullname,
         petname: response.rows[0].petname,
         phone: response.rows[0].phone,
-        address: response.rows[0].address,
+        address_line_1: response.rows[0].address_line_1,
+        address_line_2: response.rows[0].address_line_2,
+        address_line_3: response.rows[0].address_line_3,
       };
       _logger.info('Contact found: ', {contact});
       const data = {
@@ -1012,7 +975,7 @@ router.post('/createOrder', async (req, res) => {
     const response = await connection.query(query, values);
 
     _logger.info('Order created successfully', {
-      orderid: response.rows[0].orderid,
+      id: response.rows[0].id,
       contactid: response.rows[0].contactid,
       status: response.rows[0].status
     });
@@ -1067,29 +1030,29 @@ router.post('/updateOrderPayment', async (req, res) => {
 });
 
 router.post('/saveContact', async (req, res) => {
-  const {firstname, lastname, fullname, petname, phone, address} = req.body;
+  // FIXED: Handle address fields correctly
+  const {firstname, lastname, fullname, petname, phone} = req.body;
   _logger.info('request body for save contact: ', {request: req.body});
 
   try {
-    const connection = await connectLocalPostgres();
-    // contactid is auto-generated by database
+    const connection = await connectLocalPostgres();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
     const query = `
-        INSERT INTO lasertg."contact"(firstname, lastname, petname, phone, address, fullname)
-        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;
+        INSERT INTO lasertg.contact(firstname, lastname, petname, phone, fullname)
+        VALUES ($1, $2, $3, $4, $5) RETURNING id;
     `;
 
+    _logger.info
     const values = [
       firstname || null,
       lastname || null,
       petname || null,
       phone || null,
-      address || null,
-      fullname || null
+      fullname || firstname + ' ' + lastname
     ];
 
     const response = await connection.query(query, values);
 
-    _logger.info('Contact saved for QR code engraving: ', {id: response.rows[0].id});
+    _logger.info('Contact saved for QR code engraving: ', {contactid: response.rows[0].id});
 
     return res.status(201).send(response.rows[0]).end();
   } catch (error) {
@@ -1100,8 +1063,13 @@ router.post('/saveContact', async (req, res) => {
   }
 });
 
+<<<<<<< Updated upstream
 router.post('/updateContact', updateContactLimiter, async (req, res) => {
   const {contactid, firstname, lastname, petname, phone, address} = req.body;
+=======
+router.post('/updateContact', async (req, res) => {
+  const {firstname, lastname, petname, phone, fullname} = req.body;
+>>>>>>> Stashed changes
   _logger.info('request body for update contact: ', {request: req.body});
 
   try {
@@ -1109,22 +1077,22 @@ router.post('/updateContact', updateContactLimiter, async (req, res) => {
     const query = `UPDATE lasertg."contact"
                    SET firstname = $1,
                        lastname  = $2,
-                       petname   = $3,
-                       phone     = $4,
-                       address   = $5
-                   WHERE id = $6;`;
+                       petname   = $4,
+                       phone     = $5,
+                       fullname  = $3
+                   WHERE id = $9;`;
 
     const values = [
       firstname || null,
       lastname || null,
       petname || null,
       phone || null,
-      address || null,
-      contactid ? parseInt(contactid) : null,
+      fullname || null
     ];
 
     const response = await connection.query(query, values);
     _logger.info('Contact updated: ', {response});
+
     if (response.rowCount > 0) {
       _logger.info('Contact updated: ', {contactUpdated: response.rowCount});
       return res.status(200).send({contactUpdated: true}).end();
@@ -1140,7 +1108,34 @@ router.post('/updateContact', updateContactLimiter, async (req, res) => {
 });
 
 router.post('/sendEmail', async (req, res) => {
+  // Check if request body exists
+  if (!req.body || Object.keys(req.body).length === 0) {
+    _logger.warn('Empty request body received for /sendEmail', {
+      contentType: req.headers['content-type'],
+      method: req.method,
+      url: req.originalUrl
+    });
+    return res.status(400).json({
+      message: 'Request body is required. Please provide: subject and message (from and to are optional)'
+    }).end();
+  }
+
   const {from, to, subject, message} = req.body;
+
+  // Validate required fields
+  if (!subject || !message) {
+    _logger.warn('Missing required email fields', {
+      from, 
+      to, 
+      subject, 
+      message,
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : []
+    });
+    return res.status(400).json({
+      message: 'Missing required fields: subject and message are required'
+    }).end();
+  }
 
   try {
     _logger.info('Sending email: ', {from, to, subject, message});

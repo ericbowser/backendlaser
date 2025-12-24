@@ -11,7 +11,12 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}\\index.js"
+            "program": "${workspaceFolder}\\index.js",
+            "serverReadyAction": {
+                "pattern": "Server listening on http://localhost:(\\d+)",
+                "uriFormat": "http://localhost:%s/api-docs",
+                "action": "openExternally"
+            }
         }
     ]
 }

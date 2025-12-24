@@ -9,7 +9,7 @@ info:
     name: API Support
     email: erbows@collar-culture.com
 servers:
-  - url: http://localhost:3003
+  - url: http://localhost:32638
     description: Local Development Server
 
 paths:
@@ -228,6 +228,234 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentIntentDetails'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stripeConfig:
+    get:
+      summary: Get Stripe configuration
+      description: Retrieve the Stripe publishable API key for frontend integration
+      tags:
+        - Payment
+      responses:
+        '200':
+          description: Stripe configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeConfig'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stripeCheckout:
+    post:
+      summary: Create Stripe checkout session
+      description: |
+        Create a Stripe Checkout Session for hosted payment processing.
+        Returns a session URL that redirects to Stripe's hosted checkout page.
+      tags:
+        - Payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutSessionInput'
+            example:
+              amount: 1999
+              currency: "usd"
+              contactid: 123
+              orderid: 456
+              successUrl: "https://example.com/success"
+              cancelUrl: "https://example.com/cancel"
+      responses:
+        '200':
+          description: Checkout session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutSessionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stripeCheckout/{sessionId}:
+    get:
+      summary: Retrieve checkout session
+      description: Get the status of a Stripe checkout session by its ID
+      tags:
+        - Payment
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+          description: The checkout session ID (starts with 'cs_')
+          example: "cs_1234567890"
+      responses:
+        '200':
+          description: Checkout session retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutSessionDetails'
+        '400':
+          description: Invalid session ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stripeWebhook:
+    post:
+      summary: Stripe webhook endpoint
+      description: |
+        Webhook endpoint for receiving Stripe events.
+        Handles payment_intent events (succeeded, failed, created, canceled, requires_action, processing)
+        and checkout.session.completed events.
+        Updates order status based on payment events.
+      tags:
+        - Payment
+      parameters:
+        - in: header
+          name: stripe-signature
+          required: true
+          schema:
+            type: string
+          description: Stripe webhook signature for verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw Stripe webhook event payload
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid webhook signature or payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /createOrder:
+    post:
+      summary: Create a new order
+      description: |
+        Create a new laser tag order with contact information and tag details.
+        Order ID is auto-generated by the database.
+      tags:
+        - Order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderInput'
+            example:
+              contactid: 123
+              tag_text_line_1: "Max"
+              tag_text_line_2: "555-1234"
+              tag_text_line_3: "123 Main St"
+              has_qr_code: true
+              amount: 1999
+              currency: "usd"
+              status: "pending"
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /updateOrderPayment:
+    post:
+      summary: Update order payment information
+      description: Update the payment intent ID and status for an existing order
+      tags:
+        - Order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderPaymentUpdate'
+            example:
+              orderid: 456
+              stripe_payment_intent_id: "pi_1234567890"
+              status: "paid"
+      responses:
+        '200':
+          description: Order payment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
           content:
@@ -504,11 +732,270 @@ components:
           example: "pi_1234567890"
         paymentMethod:
           type: string
-          description: Payment method ID
+          description: Payment method ID or object
           example: "pm_1234567890"
       required:
         - paymentIntentId
         - paymentMethod
+
+    StripeConfig:
+      type: object
+      properties:
+        publishableKey:
+          type: string
+          description: Stripe publishable API key for frontend
+          example: "pk_test_51RyGwgR7FRhkVqEWX8GMtDgzfr27pTuqcMZ1Y9DwlIKCrWrpkudh7Z7GI5H7RTVgUy6b2nILcJ2zLhckE6gbmdqu006y5A6Vmh"
+        keyType:
+          type: string
+          description: Type of key (test or live)
+          enum: [test, live]
+          example: "test"
+
+    CheckoutSessionInput:
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: Amount in cents (required if lineItems not provided)
+          minimum: 1
+          example: 1999
+        currency:
+          type: string
+          description: Currency code (3-letter ISO code)
+          default: "usd"
+          example: "usd"
+        contactid:
+          type: integer
+          nullable: true
+          description: Associated contact ID
+          example: 123
+        orderid:
+          type: integer
+          nullable: true
+          description: Associated order ID
+          example: 456
+        successUrl:
+          type: string
+          format: uri
+          description: URL to redirect to on successful payment
+          example: "https://example.com/success"
+        cancelUrl:
+          type: string
+          format: uri
+          description: URL to redirect to on cancelled payment
+          example: "https://example.com/cancel"
+        lineItems:
+          type: array
+          description: Optional line items array (alternative to amount)
+          items:
+            type: object
+            properties:
+              price_data:
+                type: object
+              quantity:
+                type: integer
+      required:
+        - successUrl
+        - cancelUrl
+
+    CheckoutSessionResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          description: Checkout session ID
+          example: "cs_1234567890"
+        url:
+          type: string
+          format: uri
+          description: URL to redirect user to for payment
+          example: "https://checkout.stripe.com/c/pay/cs_1234567890"
+        amount:
+          type: integer
+          description: Total amount in cents
+          example: 1999
+        currency:
+          type: string
+          description: Currency code
+          example: "usd"
+
+    CheckoutSessionDetails:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          description: Checkout session ID
+          example: "cs_1234567890"
+        status:
+          type: string
+          description: Session status
+          enum: [open, complete, expired]
+          example: "complete"
+        paymentStatus:
+          type: string
+          description: Payment status
+          enum: [paid, unpaid, no_payment_required]
+          example: "paid"
+        amountTotal:
+          type: integer
+          description: Total amount in cents
+          example: 1999
+        currency:
+          type: string
+          description: Currency code
+          example: "usd"
+        paymentIntentId:
+          type: string
+          nullable: true
+          description: Associated payment intent ID
+          example: "pi_1234567890"
+        customerId:
+          type: string
+          nullable: true
+          description: Customer ID if created
+          example: "cus_1234567890"
+        metadata:
+          type: object
+          description: Additional metadata
+          properties:
+            contactid:
+              type: string
+            orderid:
+              type: string
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Order database ID
+          example: 456
+        orderid:
+          type: integer
+          description: Order identifier (auto-generated)
+          example: 456
+        contactid:
+          type: integer
+          description: Associated contact ID
+          example: 123
+        stripe_payment_intent_id:
+          type: string
+          nullable: true
+          description: Stripe payment intent ID
+          example: "pi_1234567890"
+        amount:
+          type: integer
+          description: Order amount in cents
+          example: 1999
+        currency:
+          type: string
+          description: Currency code
+          example: "usd"
+        status:
+          type: string
+          description: Order status
+          enum: [pending, processing, paid, failed]
+          example: "pending"
+        tag_text_line_1:
+          type: string
+          nullable: true
+          description: First line of text for laser tag
+          example: "Max"
+        tag_text_line_2:
+          type: string
+          nullable: true
+          description: Second line of text for laser tag
+          example: "555-1234"
+        tag_text_line_3:
+          type: string
+          nullable: true
+          description: Third line of text for laser tag
+          example: "123 Main St"
+        has_qr_code:
+          type: boolean
+          description: Whether the tag includes a QR code
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Order creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Order last update timestamp
+
+    OrderInput:
+      type: object
+      properties:
+        contactid:
+          type: integer
+          description: Associated contact ID
+          example: 123
+        tag_text_line_1:
+          type: string
+          nullable: true
+          description: First line of text for laser tag
+          example: "Max"
+        tag_text_line_2:
+          type: string
+          nullable: true
+          description: Second line of text for laser tag
+          example: "555-1234"
+        tag_text_line_3:
+          type: string
+          nullable: true
+          description: Third line of text for laser tag
+          example: "123 Main St"
+        has_qr_code:
+          type: boolean
+          description: Whether the tag includes a QR code
+          default: true
+          example: true
+        amount:
+          type: integer
+          description: Order amount in cents
+          minimum: 1
+          example: 1999
+        currency:
+          type: string
+          description: Currency code
+          default: "usd"
+          example: "usd"
+        stripe_payment_intent_id:
+          type: string
+          nullable: true
+          description: Stripe payment intent ID (optional, can be added later)
+          example: "pi_1234567890"
+        status:
+          type: string
+          description: Order status
+          default: "pending"
+          enum: [pending, processing, paid, failed]
+          example: "pending"
+      required:
+        - contactid
+        - amount
+
+    OrderPaymentUpdate:
+      type: object
+      properties:
+        orderid:
+          type: integer
+          description: Order ID to update
+          example: 456
+        stripe_payment_intent_id:
+          type: string
+          nullable: true
+          description: Stripe payment intent ID
+          example: "pi_1234567890"
+        status:
+          type: string
+          description: Order status
+          default: "processing"
+          enum: [pending, processing, paid, failed]
+          example: "paid"
+      required:
+        - orderid
 
     Error:
       type: object
@@ -525,6 +1012,8 @@ tags:
   - name: Contact
     description: Contact management for QR code laser engraving
   - name: Payment
-    description: Payment processing endpoints
+    description: Payment processing endpoints using Stripe
+  - name: Order
+    description: Order management for laser tag products
   - name: Email
     description: Email sending functionality

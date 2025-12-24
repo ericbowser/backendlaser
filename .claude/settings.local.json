@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(stripe:*)",
+      "WebSearch",
+      "Bash(echo:*)",
+      "Bash(env)",
+      "Bash(printenv:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(chmod:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
