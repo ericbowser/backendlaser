@@ -1,10 +1,10 @@
-const {STRIPE_TEST_SECRET_API_KEY} = require('../env.json');
+const {STRIPE_TEST_SECRET_API_KEY} = require('dotenv').config().parsed;
 const logger = require('../logs/backendLaserLog');
 const _logger = logger();
 
 // Validate Stripe key is present
 if (!STRIPE_TEST_SECRET_API_KEY) {
-  _logger.error('STRIPE_TEST_SECRET_API_KEY is missing from env.json');
+  _logger.error('STRIPE_TEST_SECRET_API_KEY is missing from environment variables');
   throw new Error('Stripe secret key is not configured');
 }
 

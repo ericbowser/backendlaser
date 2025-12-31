@@ -13,7 +13,7 @@ FROM node:20-alpine3.20
 # Use production node environment by default.
 ENV NODE_ENV production
 
-WORKDIR .
+WORKDIR /app
 
 COPY package*.json .
 RUN npm install -g npm@11.0.0

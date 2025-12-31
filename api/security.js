@@ -6,7 +6,7 @@
 
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const { CORS_ORIGINS, NODE_ENV, STRIPE_WEBHOOK_SECRET } = require('../env.json');
+const { CORS_ORIGINS, NODE_ENV, STRIPE_WEBHOOK_SECRET } = require('dotenv').config().parsed;
 
 /**
  * Configure Helmet for security headers

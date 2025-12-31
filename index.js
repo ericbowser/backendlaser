@@ -8,7 +8,7 @@ _logger.info('Starting LaserTags API');
 const swaggerJsdoc = require('swagger-jsdoc');
 const express = require("express");
 const swaggerUi = require("swagger-ui-express");
-const {PORT} = require('./env.json');
+const {PORT} = require('dotenv').config().parsed;
 
 const httpPort = PORT || 32638;
 console.log('passed port to use for http', httpPort);

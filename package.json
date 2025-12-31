@@ -22,6 +22,7 @@
     "cors": "^2.8.5",
     "dept": "^0.1.12",
     "express": "^4.21.1",
+    "express-rate-limit": "^8.2.1",
     "express-router": "^0.0.1",
     "log4js": "^6.9.1",
     "log4js-json-layout": "^2.2.3",
@@ -33,10 +34,10 @@
     "stripe": "^19.1.0",
     "url": "^0.11.3",
     "uuid": "^11.0.3",
-    "wss": "^0.0.2",
-    "express-rate-limit": "^8.2.1"
+    "wss": "^0.0.2"
   },
   "devDependencies": {
+    "dotenv": "^17.2.3",
     "nodemon": "^3.1.7",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"

@@ -9,7 +9,7 @@ function initialize() {
     appenders: {
       backendLaser: {
         type: "fileSync",
-        filename: "backendLaser.log",
+        filename: "/logs/backendLaser.log",
         maxLogSize: 10458760, //10 MB
         backups: 3,
         layout: {

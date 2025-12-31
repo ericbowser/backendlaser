@@ -1,5 +1,5 @@
 ﻿const {Client, Pool} = require('pg');
-const {DB_PORT, DB_SERVER, DB_USER, DB_PASSWORD} = require("../env.json");
+const { DB_PORT, DB_SERVER, DB_USER, DB_PASSWORD } = require("dotenv").config().parsed;
 const getLogger = require("../logs/backendLaserLog.js");
 let _logger = getLogger();
 
@@ -9,15 +9,15 @@ async function connectLocalPostgres() {
 	try {
 		if (!client) {
 			_logger.info('Connecting to local postgres..', {
-				host: DB_SERVER,
-				port: DB_PORT,
-				user: DB_USER
+				host: config.DB_SERVER,
+				port: config.DB_PORT,
+				user: config.DB_USER
 			});
 			client = new Client({
-				user: DB_USER,
-				password: DB_PASSWORD,
-				port: parseInt(DB_PORT),
-				host: DB_SERVER,
+				user: config.DB_USER,
+				password: process.env.DB_PASSWORD || config.DB_PASSWORD,
+				port: parseInt(config.DB_PORT),
+				host: config.DB_SERVER,
 				ssl: false
 			});
 			await client.connect();
