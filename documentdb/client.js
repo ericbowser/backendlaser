@@ -1,5 +1,5 @@
 ﻿const {Client, Pool} = require('pg');
-const { DB_PORT, DB_SERVER, DB_USER, DB_PASSWORD } = require("dotenv").config().parsed;
+const { DB_PORT, DB_SERVER, DB_USER, DB_PASSWORD, DB_DATABASE } = require("dotenv").config().parsed;
 const getLogger = require("../logs/backendLaserLog.js");
 let _logger = getLogger();
 
@@ -9,15 +9,16 @@ async function connectLocalPostgres() {
 	try {
 		if (!client) {
 			_logger.info('Connecting to local postgres..', {
-				host: config.DB_SERVER,
-				port: config.DB_PORT,
-				user: config.DB_USER
+				host: process.env.DB_SERVER || DB_SERVER,
+				port: process.env.DB_PORT || DB_PORT,
+				user: process.env.DB_USER || DB_USER
 			});
 			client = new Client({
-				user: config.DB_USER,
-				password: process.env.DB_PASSWORD || config.DB_PASSWORD,
-				port: parseInt(config.DB_PORT),
-				host: config.DB_SERVER,
+				user: process.env.DB_USER || DB_USER,
+				password: process.env.DB_PASSWORD || DB_PASSWORD,
+				port: parseInt(process.env.DB_PORT || DB_PORT),
+				host: process.env.DB_SERVER || DB_SERVER,
+				database: process.env.DB_DATABASE || DB_DATABASE,
 				ssl: false
 			});
 			await client.connect();
@@ -37,16 +38,16 @@ async function connectLocalDockerPostgres() {
 			const pool = new Pool({
 				user: DB_USER,
 				host: DB_SERVER,
-				password: DB_PASSWORD,
-				database: 'postgres',
+				password: process.env.DB_PASSWORD || DB_PASSWORD,
+				database: process.env.DB_DATABASE || 'ericbo',
 				port: parseInt(DB_PORT)
 			});
 
 			client = new Client({
 				user: DB_USER,
 				host: DB_SERVER,
-				password: DB_PASSWORD,
-				database: 'postgres',
+				password: process.env.DB_PASSWORD || DB_PASSWORD,
+				database: process.env.DB_DATABASE || 'ericbo',
 				port: parseInt(DB_PORT),
 				ssl: false
 			});

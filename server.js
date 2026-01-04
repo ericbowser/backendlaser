@@ -157,10 +157,13 @@ Order Details:
 - Payment Intent ID: ${updatedOrder.stripe_payment_intent_id || "Pending"}
 
 Tag Information:
-- Line 1: ${tag?.text_line_1 || "N/A"}
-- Line 2: ${tag?.text_line_2 || "N/A"}
-- Line 3: ${tag?.text_line_3 || "N/A"}
-- Has QR Code: ${updatedOrder.has_qr_code ? "Yes" : "No"}
+- Side 1 Line 1: ${tag?.side_1_text_line_1 || "N/A"}
+- Side 1 Line 2: ${tag?.side_1_text_line_2 || "N/A"}
+- Side 1 Line 3: ${tag?.side_1_text_line_3 || "N/A"}
+- Side 2 Line 1: ${tag?.side_2_text_line_1 || "N/A"}
+- Side 2 Line 2: ${tag?.side_2_text_line_2 || "N/A"}
+- Side 2 Line 3: ${tag?.side_2_text_line_3 || "N/A"}
+- Has QR Code: ${tag?.is_qr_code ? "Yes" : (updatedOrder.has_qr_code ? "Yes" : "No")}
 
 Customer Information:
 - Name: ${contact.firstname || ""} ${contact.lastname || ""}
@@ -482,10 +485,13 @@ Order Details:
 - Payment Intent ID: ${updatedOrder.stripe_payment_intent_id || "Pending"}
 
 Tag Information:
-- Line 1: ${tag?.text_line_1 || "N/A"}
-- Line 2: ${tag?.text_line_2 || "N/A"}
-- Line 3: ${tag?.text_line_3 || "N/A"}
-- Has QR Code: ${updatedOrder.has_qr_code ? "Yes" : "No"}
+- Side 1 Line 1: ${tag?.side_1_text_line_1 || "N/A"}
+- Side 1 Line 2: ${tag?.side_1_text_line_2 || "N/A"}
+- Side 1 Line 3: ${tag?.side_1_text_line_3 || "N/A"}
+- Side 2 Line 1: ${tag?.side_2_text_line_1 || "N/A"}
+- Side 2 Line 2: ${tag?.side_2_text_line_2 || "N/A"}
+- Side 2 Line 3: ${tag?.side_2_text_line_3 || "N/A"}
+- Has QR Code: ${tag?.is_qr_code ? "Yes" : (updatedOrder.has_qr_code ? "Yes" : "No")}
 
 Customer Information:
 - Name: ${contact.firstname || ""} ${contact.lastname || ""}
@@ -1314,20 +1320,24 @@ router.post("/createOrder", async (req, res) => {
 });
 
 router.post("/saveTag", async (req, res) => {
-  const {
-    tagside,
-    text_line_1,
-    text_line_2,
-    text_line_3,
-    text_line_4,
-    text_line_5,
-    text_line_6,
-    notes,
-    orderid,
-  } = req.body;
+  const { tag } = req.body;
   _logger.info("POST /saveTag - Request received", { request: req.body });
 
   try {
+    // Extract fields from the new nested structure
+    const orderid = tag?.orderid;
+    const is_qr_code = tag?.is_qr_code !== undefined ? tag.is_qr_code : false;
+    const qr_code_svg = tag?.qr_code_svg || null;
+    const notes = tag?.notes || null;
+    
+    // Extract text lines from nested side1 and side2 objects
+    const side_1_text_line_1 = tag?.side1?.text_line_1 || null;
+    const side_1_text_line_2 = tag?.side1?.text_line_2 || null;
+    const side_1_text_line_3 = tag?.side1?.text_line_3 || null;
+    const side_2_text_line_1 = tag?.side2?.text_line_4 || null;
+    const side_2_text_line_2 = tag?.side2?.text_line_5 || null;
+    const side_2_text_line_3 = tag?.side2?.text_line_6 || null;
+
     // Validate required fields
     if (!orderid) {
       _logger.warn("Missing required field: orderid", { request: req.body });
@@ -1346,40 +1356,25 @@ router.post("/saveTag", async (req, res) => {
     const checkQuery = `SELECT id FROM lasertg.tag WHERE orderid = $1 LIMIT 1`;
     const existingTag = await connection.query(checkQuery, [orderid]);
 
-    // Handle array fields - convert to array if not already, and trim/clean values
-    const tagsideArray = Array.isArray(tagside) 
-      ? tagside.map(v => String(v || '').trim()).filter(v => v.length > 0)
-      : tagside && String(tagside).trim() 
-        ? [String(tagside).trim()] 
-        : null;
-    
-    const textLine1Array = Array.isArray(text_line_1)
-      ? text_line_1.map(v => String(v || '').trim()).filter(v => v.length > 0)
-      : text_line_1 && String(text_line_1).trim()
-        ? [String(text_line_1).trim()]
-        : null;
-    
-    const textLine4Array = Array.isArray(text_line_4)
-      ? text_line_4.map(v => String(v || '').trim()).filter(v => v.length > 0)
-      : text_line_4 && String(text_line_4).trim()
-        ? [String(text_line_4).trim()]
-        : null;
-
-    // Trim string fields
-    const textLine2 = text_line_2 && String(text_line_2).trim() ? String(text_line_2).trim() : null;
-    const textLine3 = text_line_3 && String(text_line_3).trim() ? String(text_line_3).trim() : null;
-    const textLine5 = text_line_5 && String(text_line_5).trim() ? String(text_line_5).trim() : null;
-    const textLine6 = text_line_6 && String(text_line_6).trim() ? String(text_line_6).trim() : null;
+    // Trim and clean string fields
+    const side1TextLine1 = side_1_text_line_1 && String(side_1_text_line_1).trim() ? String(side_1_text_line_1).trim() : null;
+    const side1TextLine2 = side_1_text_line_2 && String(side_1_text_line_2).trim() ? String(side_1_text_line_2).trim() : null;
+    const side1TextLine3 = side_1_text_line_3 && String(side_1_text_line_3).trim() ? String(side_1_text_line_3).trim() : null;
+    const side2TextLine1 = side_2_text_line_1 && String(side_2_text_line_1).trim() ? String(side_2_text_line_1).trim() : null;
+    const side2TextLine2 = side_2_text_line_2 && String(side_2_text_line_2).trim() ? String(side_2_text_line_2).trim() : null;
+    const side2TextLine3 = side_2_text_line_3 && String(side_2_text_line_3).trim() ? String(side_2_text_line_3).trim() : null;
     const notesValue = notes && String(notes).trim() ? String(notes).trim() : null;
+    const qrCodeSvgValue = qr_code_svg && String(qr_code_svg).trim() ? String(qr_code_svg).trim() : null;
 
     const tagValues = [
-      tagsideArray,
-      textLine1Array,
-      textLine2,
-      textLine3,
-      textLine4Array,
-      textLine5,
-      textLine6,
+      side1TextLine1,
+      side1TextLine2,
+      side1TextLine3,
+      side2TextLine1,
+      side2TextLine2,
+      side2TextLine3,
+      is_qr_code,
+      qrCodeSvgValue,
       notesValue,
       orderid,
     ];
@@ -1391,24 +1386,24 @@ router.post("/saveTag", async (req, res) => {
       const tagId = existingTag.rows[0].id;
       const updateQuery = `
           UPDATE lasertg.tag
-          SET tagside = $1,
-              text_line_1 = $2,
-              text_line_2 = $3,
-              text_line_3 = $4,
-              text_line_4 = $5,
-              text_line_5 = $6,
-              text_line_6 = $7,
-              notes = $8
-          WHERE orderid = $9
+          SET side_1_text_line_1 = $1,
+              side_1_text_line_2 = $2,
+              side_1_text_line_3 = $3,
+              side_2_text_line_1 = $4,
+              side_2_text_line_2 = $5,
+              side_2_text_line_3 = $6,
+              is_qr_code = $7,
+              qr_code_svg = $8,
+              notes = $9
+          WHERE orderid = $10
           RETURNING *;
       `;
 
       _logger.info("Updating existing tag", {
         tagId,
         orderid,
-        hasTagside: !!tagsideArray,
-        hasTextLine1: !!textLine1Array,
-        hasTextLine4: !!textLine4Array,
+        hasQrCode: is_qr_code,
+        hasQrCodeSvg: !!qrCodeSvgValue,
       });
 
       response = await connection.query(updateQuery, tagValues);
@@ -1416,30 +1411,30 @@ router.post("/saveTag", async (req, res) => {
       // Insert new tag
       const insertQuery = `
           INSERT INTO lasertg.tag(
-            tagside,
-            text_line_1,
-            text_line_2,
-            text_line_3,
-            text_line_4,
-            text_line_5,
-            text_line_6,
+            side_1_text_line_1,
+            side_1_text_line_2,
+            side_1_text_line_3,
+            side_2_text_line_1,
+            side_2_text_line_2,
+            side_2_text_line_3,
+            is_qr_code,
+            qr_code_svg,
             notes,
             orderid
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;
       `;
 
       _logger.info("Creating new tag", {
         orderid,
-        hasTagside: !!tagsideArray,
-        hasTextLine1: !!textLine1Array,
-        hasTextLine4: !!textLine4Array,
+        hasQrCode: is_qr_code,
+        hasQrCodeSvg: !!qrCodeSvgValue,
       });
 
       response = await connection.query(insertQuery, tagValues);
     }
 
-    _logger.info("Tag created successfully", {
+    _logger.info("Tag saved successfully", {
       tagId: response.rows[0].id,
       orderid: response.rows[0].orderid,
     });
@@ -1456,6 +1451,103 @@ router.post("/saveTag", async (req, res) => {
       .send({
         error: error.message,
         message: "Failed to save tag",
+      })
+      .end();
+  }
+});
+
+router.post("/saveShipping", async (req, res) => {
+  const { orderid, address_line_1, address_line_2, address_line_3, status } = req.body;
+  _logger.info("POST /saveShipping - Request received", { request: req.body });
+
+  try {
+    // Validate required fields
+    if (!orderid || !address_line_1) {
+      _logger.warn("Missing required fields: orderid and address_line_1", { request: req.body });
+      return res
+        .status(400)
+        .send({
+          error: "Missing required fields",
+          message: "orderid and address_line_1 are required"
+        })
+        .end();
+    }
+
+    const connection = await connectLocalPostgres();
+
+    // Check if shipping record already exists for this order
+    const checkQuery = `SELECT id FROM lasertg.shipping WHERE orderid = $1 LIMIT 1`;
+    const existingShipping = await connection.query(checkQuery, [orderid]);
+
+    const shippingValues = [
+      address_line_1 || null,
+      address_line_2 || null,
+      address_line_3 || null,
+      status || 'pending',
+      orderid
+    ];
+
+    let response;
+
+    if (existingShipping.rowCount > 0) {
+      // Update existing shipping record
+      const shippingId = existingShipping.rows[0].id;
+      const updateQuery = `
+        UPDATE lasertg.shipping
+        SET address_line_1 = $1,
+            address_line_2 = $2,
+            address_line_3 = $3,
+            status = $4,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE orderid = $5
+        RETURNING *;
+      `;
+
+      _logger.info("Updating existing shipping record", {
+        shippingId,
+        orderid
+      });
+
+      response = await connection.query(updateQuery, shippingValues);
+    } else {
+      // Insert new shipping record
+      const insertQuery = `
+        INSERT INTO lasertg.shipping(
+          address_line_1,
+          address_line_2,
+          address_line_3,
+          status,
+          orderid
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+      `;
+
+      _logger.info("Creating new shipping record", {
+        orderid,
+        address_line_1
+      });
+
+      response = await connection.query(insertQuery, shippingValues);
+    }
+
+    _logger.info("Shipping record saved successfully", {
+      shippingId: response.rows[0].id,
+      orderid: response.rows[0].orderid
+    });
+
+    return res.status(201).send(response.rows[0]).end();
+  } catch (error) {
+    _logger.error("Error saving shipping", {
+      error: error.message,
+      stack: error.stack,
+      request: req.body
+    });
+    return res
+      .status(500)
+      .send({
+        error: error.message,
+        message: "Failed to save shipping information"
       })
       .end();
   }
@@ -1499,77 +1591,148 @@ router.post("/updateOrderPayment", async (req, res) => {
 });
 
 router.post("/saveContact", async (req, res) => {
-  // FIXED: Handle address fields correctly
+  // FIXED: Handle address fields correctly - now includes all fields
   const { firstname, lastname, fullname, petname, phone, email, address_line_1, address_line_2, address_line_3 } = req.body;
   _logger.info("request body for save contact: ", { request: req.body });
 
   try {
     const connection = await connectLocalPostgres();
     const query = `
-        INSERT INTO lasertg.contact(firstname, lastname, petname, phone, fullname)
-        VALUES ($1, $2, $3, $4, $5) RETURNING id;
+        INSERT INTO lasertg.contact(
+          firstname, 
+          lastname, 
+          petname, 
+          phone, 
+          fullname, 
+          email, 
+          address_line_1, 
+          address_line_2, 
+          address_line_3
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+        RETURNING id;
     `;
 
-    _logger.info;
+    // Build fullname from firstname + lastname if not provided
+    const computedFullname = fullname || [firstname, lastname].filter(Boolean).join(" ") || null;
+
     const values = [
       firstname || null,
       lastname || null,
       petname || null,
       phone || null,
-      fullname || firstname + " " + lastname,
+      fullname,
+      email || null,
+      address_line_1 || null,
+      address_line_2 || null,
+      address_line_3 || null,
     ];
+
+    _logger.info("Saving contact with values: ", {
+      firstname,
+      lastname,
+      petname,
+      phone,
+      fullname: computedFullname,
+      email,
+      address_line_1,
+      address_line_2,
+      address_line_3,
+    });
 
     const response = await connection.query(query, values);
 
-    _logger.info("Contact saved for QR code engraving: ", {
+    _logger.info("Contact saved successfully: ", {
       contactid: response.rows[0].id,
     });
 
     return res.status(201).send(response.rows[0]).end();
   } catch (error) {
     console.error(error);
-    _logger.error("Error saving contact: ", { error });
+    _logger.error("Error saving contact: ", { error: error.message, stack: error.stack });
 
-    return res.status(500).send(error).end();
+    return res.status(500).send({ error: error.message, message: "Failed to save contact" }).end();
   }
 });
 
 router.post("/updateContact", updateContactLimiter, async (req, res) => {
-  const { contactid, firstname, lastname, petname, phone, address } = req.body;
+  const { contactid, firstname, lastname, fullname, petname, phone, email, address_line_1, address_line_2, address_line_3 } = req.body;
   _logger.info("request body for update contact: ", { request: req.body });
+
+  // Validate contactid is provided
+  if (!contactid) {
+    _logger.warn("Missing contactid in update request");
+    return res.status(400).send({ error: "contactid is required" }).end();
+  }
 
   try {
     const connection = await connectLocalPostgres();
+    
+    // Build fullname from firstname + lastname if not provided
+    const computedFullname = fullname || [firstname, lastname].filter(Boolean).join(" ") || null;
+    
     const query = `UPDATE lasertg."contact"
                    SET firstname = $1,
-                       lastname  = $2,
-                       petname   = $4,
-                       phone     = $5,
-                       fullname  = $3
-                   WHERE id = $9;`;
+                       lastname = $2,
+                       fullname = $3,
+                       petname = $4,
+                       phone = $5,
+                       email = $6,
+                       address_line_1 = $7,
+                       address_line_2 = $8,
+                       address_line_3 = $9
+                   WHERE id = $10
+                   RETURNING *;`;
 
     const values = [
       firstname || null,
       lastname || null,
+      computedFullname,
       petname || null,
       phone || null,
-      fullname || null,
+      email || null,
+      address_line_1 || null,
+      address_line_2 || null,
+      address_line_3 || null,
+      contactid,
     ];
 
+    _logger.info("Updating contact with values: ", {
+      contactid,
+      firstname,
+      lastname,
+      fullname: computedFullname,
+      petname,
+      phone,
+      email,
+      address_line_1,
+      address_line_2,
+      address_line_3,
+    });
+
     const response = await connection.query(query, values);
-    _logger.info("Contact updated: ", { response });
 
     if (response.rowCount > 0) {
-      _logger.info("Contact updated: ", { contactUpdated: response.rowCount });
-      return res.status(200).send({ contactUpdated: true }).end();
+      _logger.info("Contact updated successfully: ", { 
+        contactid,
+        contactUpdated: response.rowCount 
+      });
+      return res.status(200).send({ 
+        contactUpdated: true, 
+        contact: response.rows[0] 
+      }).end();
     } else {
-      return res.status(200).send({ contactUpdated: false }).end();
+      _logger.warn("Contact not found for update: ", { contactid });
+      return res.status(404).send({ 
+        contactUpdated: false, 
+        error: "Contact not found" 
+      }).end();
     }
   } catch (error) {
     console.error(error);
-    _logger.error("Error updating contact: ", { error });
+    _logger.error("Error updating contact: ", { error: error.message, stack: error.stack });
 
-    return res.status(500).send(error).end();
+    return res.status(500).send({ error: error.message, message: "Failed to update contact" }).end();
   }
 });
 
