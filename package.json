@@ -14,7 +14,8 @@
     "build": "docker build -t ericbowser/backend-laser .",
     "run": "docker run -p 32638:32638 --env-file .env ericbowser/backend-laser:latest",
     "dev": "npm install && nodemon index.js",
-    "clean": "rm -R node_modules && rm package-lock.json && npm install"
+    "clean": "rm -R node_modules && rm package-lock.json && npm install",
+    "stripe:listen": "stripe listen --forward-to localhost:32638/api/stripe/webhook"
   },
   "dependencies": {
     "axios": "^1.7.2",

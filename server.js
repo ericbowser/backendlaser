@@ -1334,9 +1334,22 @@ router.post("/saveTag", async (req, res) => {
     const side_1_text_line_1 = tag?.side1?.text_line_1 || null;
     const side_1_text_line_2 = tag?.side1?.text_line_2 || null;
     const side_1_text_line_3 = tag?.side1?.text_line_3 || null;
-    const side_2_text_line_1 = tag?.side2?.text_line_4 || null;
-    const side_2_text_line_2 = tag?.side2?.text_line_5 || null;
-    const side_2_text_line_3 = tag?.side2?.text_line_6 || null;
+    const side_2_text_line_1 = tag?.side2?.text_line_1 || null;
+    const side_2_text_line_2 = tag?.side2?.text_line_2 || null;
+    const side_2_text_line_3 = tag?.side2?.text_line_3 || null;
+
+    _logger.info("Extracted tag fields from request", {
+      orderid,
+      hasQrCode: is_qr_code,
+      hasQrCodeSvg: !!qr_code_svg,
+      hasNotes: !!notes,
+      side1_line1: side_1_text_line_1 ? "present" : "null",
+      side1_line2: side_1_text_line_2 ? "present" : "null",
+      side1_line3: side_1_text_line_3 ? "present" : "null",
+      side2_line1: side_2_text_line_1 ? "present" : "null",
+      side2_line2: side_2_text_line_2 ? "present" : "null",
+      side2_line3: side_2_text_line_3 ? "present" : "null",
+    });
 
     // Validate required fields
     if (!orderid) {
@@ -1350,11 +1363,19 @@ router.post("/saveTag", async (req, res) => {
         .end();
     }
 
+    _logger.info("Validation passed for /saveTag", { orderid });
+
     const connection = await connectLocalPostgres();
 
     // Check if tag already exists for this order
+    _logger.info("Checking if tag exists for order", { orderid });
     const checkQuery = `SELECT id FROM lasertg.tag WHERE orderid = $1 LIMIT 1`;
     const existingTag = await connection.query(checkQuery, [orderid]);
+    _logger.info("Tag existence check completed", {
+      orderid,
+      tagExists: existingTag.rowCount > 0,
+      tagId: existingTag.rowCount > 0 ? existingTag.rows[0].id : null,
+    });
 
     // Trim and clean string fields
     const side1TextLine1 = side_1_text_line_1 && String(side_1_text_line_1).trim() ? String(side_1_text_line_1).trim() : null;
@@ -1365,6 +1386,18 @@ router.post("/saveTag", async (req, res) => {
     const side2TextLine3 = side_2_text_line_3 && String(side_2_text_line_3).trim() ? String(side_2_text_line_3).trim() : null;
     const notesValue = notes && String(notes).trim() ? String(notes).trim() : null;
     const qrCodeSvgValue = qr_code_svg && String(qr_code_svg).trim() ? String(qr_code_svg).trim() : null;
+
+    _logger.info("Tag fields trimmed and cleaned", {
+      orderid,
+      side1_line1: side1TextLine1 ? `"${side1TextLine1.substring(0, 50)}${side1TextLine1.length > 50 ? '...' : ''}"` : "null",
+      side1_line2: side1TextLine2 ? `"${side1TextLine2.substring(0, 50)}${side1TextLine2.length > 50 ? '...' : ''}"` : "null",
+      side1_line3: side1TextLine3 ? `"${side1TextLine3.substring(0, 50)}${side1TextLine3.length > 50 ? '...' : ''}"` : "null",
+      side2_line1: side2TextLine1 ? `"${side2TextLine1.substring(0, 50)}${side2TextLine1.length > 50 ? '...' : ''}"` : "null",
+      side2_line2: side2TextLine2 ? `"${side2TextLine2.substring(0, 50)}${side2TextLine2.length > 50 ? '...' : ''}"` : "null",
+      side2_line3: side2TextLine3 ? `"${side2TextLine3.substring(0, 50)}${side2TextLine3.length > 50 ? '...' : ''}"` : "null",
+      hasNotes: !!notesValue,
+      hasQrCodeSvg: !!qrCodeSvgValue,
+    });
 
     const tagValues = [
       side1TextLine1,
@@ -1404,9 +1437,16 @@ router.post("/saveTag", async (req, res) => {
         orderid,
         hasQrCode: is_qr_code,
         hasQrCodeSvg: !!qrCodeSvgValue,
+        side1Lines: [side1TextLine1, side1TextLine2, side1TextLine3].filter(Boolean).length,
+        side2Lines: [side2TextLine1, side2TextLine2, side2TextLine3].filter(Boolean).length,
       });
 
       response = await connection.query(updateQuery, tagValues);
+      _logger.info("Tag update query executed successfully", {
+        tagId,
+        orderid,
+        rowsAffected: response.rowCount,
+      });
     } else {
       // Insert new tag
       const insertQuery = `
@@ -1429,14 +1469,33 @@ router.post("/saveTag", async (req, res) => {
         orderid,
         hasQrCode: is_qr_code,
         hasQrCodeSvg: !!qrCodeSvgValue,
+        side1Lines: [side1TextLine1, side1TextLine2, side1TextLine3].filter(Boolean).length,
+        side2Lines: [side2TextLine1, side2TextLine2, side2TextLine3].filter(Boolean).length,
       });
 
       response = await connection.query(insertQuery, tagValues);
+      _logger.info("Tag insert query executed successfully", {
+        orderid,
+        rowsAffected: response.rowCount,
+      });
     }
 
     _logger.info("Tag saved successfully", {
       tagId: response.rows[0].id,
       orderid: response.rows[0].orderid,
+      savedTag: {
+        id: response.rows[0].id,
+        orderid: response.rows[0].orderid,
+        side1_line1: response.rows[0].side_1_text_line_1 ? "present" : "null",
+        side1_line2: response.rows[0].side_1_text_line_2 ? "present" : "null",
+        side1_line3: response.rows[0].side_1_text_line_3 ? "present" : "null",
+        side2_line1: response.rows[0].side_2_text_line_1 ? "present" : "null",
+        side2_line2: response.rows[0].side_2_text_line_2 ? "present" : "null",
+        side2_line3: response.rows[0].side_2_text_line_3 ? "present" : "null",
+        is_qr_code: response.rows[0].is_qr_code,
+        hasQrCodeSvg: !!response.rows[0].qr_code_svg,
+        hasNotes: !!response.rows[0].notes,
+      },
     });
 
     return res.status(201).send(response.rows[0]).end();
@@ -1461,9 +1520,22 @@ router.post("/saveShipping", async (req, res) => {
   _logger.info("POST /saveShipping - Request received", { request: req.body });
 
   try {
+    _logger.info("Extracted shipping fields from request", {
+      orderid,
+      hasAddressLine1: !!address_line_1,
+      hasAddressLine2: !!address_line_2,
+      hasAddressLine3: !!address_line_3,
+      status: status || "pending (default)",
+      addressLine1Preview: address_line_1 ? `"${address_line_1.substring(0, 50)}${address_line_1.length > 50 ? '...' : ''}"` : "null",
+    });
+
     // Validate required fields
     if (!orderid || !address_line_1) {
-      _logger.warn("Missing required fields: orderid and address_line_1", { request: req.body });
+      _logger.warn("Missing required fields: orderid and address_line_1", {
+        request: req.body,
+        hasOrderid: !!orderid,
+        hasAddressLine1: !!address_line_1,
+      });
       return res
         .status(400)
         .send({
@@ -1473,11 +1545,19 @@ router.post("/saveShipping", async (req, res) => {
         .end();
     }
 
+    _logger.info("Validation passed for /saveShipping", { orderid });
+
     const connection = await connectLocalPostgres();
 
     // Check if shipping record already exists for this order
+    _logger.info("Checking if shipping record exists for order", { orderid });
     const checkQuery = `SELECT id FROM lasertg.shipping WHERE orderid = $1 LIMIT 1`;
     const existingShipping = await connection.query(checkQuery, [orderid]);
+    _logger.info("Shipping record existence check completed", {
+      orderid,
+      shippingExists: existingShipping.rowCount > 0,
+      shippingId: existingShipping.rowCount > 0 ? existingShipping.rows[0].id : null,
+    });
 
     const shippingValues = [
       address_line_1 || null,
@@ -1505,10 +1585,19 @@ router.post("/saveShipping", async (req, res) => {
 
       _logger.info("Updating existing shipping record", {
         shippingId,
-        orderid
+        orderid,
+        addressLine1: address_line_1 ? `"${address_line_1.substring(0, 50)}${address_line_1.length > 50 ? '...' : ''}"` : "null",
+        hasAddressLine2: !!address_line_2,
+        hasAddressLine3: !!address_line_3,
+        status: status || "pending",
       });
 
       response = await connection.query(updateQuery, shippingValues);
+      _logger.info("Shipping update query executed successfully", {
+        shippingId,
+        orderid,
+        rowsAffected: response.rowCount,
+      });
     } else {
       // Insert new shipping record
       const insertQuery = `
@@ -1525,15 +1614,30 @@ router.post("/saveShipping", async (req, res) => {
 
       _logger.info("Creating new shipping record", {
         orderid,
-        address_line_1
+        addressLine1: address_line_1 ? `"${address_line_1.substring(0, 50)}${address_line_1.length > 50 ? '...' : ''}"` : "null",
+        hasAddressLine2: !!address_line_2,
+        hasAddressLine3: !!address_line_3,
+        status: status || "pending",
       });
 
       response = await connection.query(insertQuery, shippingValues);
+      _logger.info("Shipping insert query executed successfully", {
+        orderid,
+        rowsAffected: response.rowCount,
+      });
     }
 
     _logger.info("Shipping record saved successfully", {
       shippingId: response.rows[0].id,
-      orderid: response.rows[0].orderid
+      orderid: response.rows[0].orderid,
+      savedShipping: {
+        id: response.rows[0].id,
+        orderid: response.rows[0].orderid,
+        address_line_1: response.rows[0].address_line_1 ? `"${response.rows[0].address_line_1.substring(0, 50)}${response.rows[0].address_line_1.length > 50 ? '...' : ''}"` : "null",
+        hasAddressLine2: !!response.rows[0].address_line_2,
+        hasAddressLine3: !!response.rows[0].address_line_3,
+        status: response.rows[0].status,
+      },
     });
 
     return res.status(201).send(response.rows[0]).end();
